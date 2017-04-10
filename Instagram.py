@@ -1,6 +1,7 @@
 from InstagramAPI import InstagramAPI
 
 import json
+import subprocess
 
 import CredentialManager
 
@@ -16,11 +17,39 @@ class Instagram:
 
     def followingFollowerDiff(self):
 
+        allFollowers = self.api.getTotalSelfFollowers()
+        allFollowing = self.api.getTotalSelfFollowings()
 
-        print("GOT MY ID: " + str(self.api.username_id))
-        self.api.getUserFollowers(self.api.username_id, 500)
+        allFollowersDict = {}
 
-        print(json.dumps(self.api.LastJson, indent=4))
+        for follower in allFollowers:
+            userID = follower['pk']
+            allFollowersDict[userID] = follower
+
+        for following in allFollowing:
+            userID = following['pk']
+
+            if userID not in allFollowersDict:
+
+                fullName = following['full_name'].encode('utf-8')
+                userName = following['username'].encode('utf-8')
+                profileLink = "https://instagram.com/" + userName
+
+                print(fullName + " not following you: \t " + profileLink)
+                command = raw_input("Type 'O' to open in brower, 'U' to unfollow,  or any other key to do nothing: ")
+                if command == 'O' or command == 'o':
+                    subprocess.Popen(['open', profileLink])
+
+                    secondCommand = raw_input("\nEnter 'U' to unfollow " + fullName + " or any other key to do nothing: ")
+
+                    if secondCommand == 'U' or secondCommand == 'u':
+                        unfollowResult = self.api.unfollow(userID)
+                        print(unfollowResult)
+
+                elif command == 'U' or command == 'u':
+                    unfollowResult = self.api.unfollow(userID)
+                    print(unfollowResult)
+
 
 
 
