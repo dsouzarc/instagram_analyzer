@@ -63,8 +63,16 @@ if __name__ == "__main__":
     client = Instagram(instagramUsername, instagramPassword)
 
     client.followingFollowerDiff()
+    exit(0);
+
+    client.api.timelineFeed()
+    timelineFeed = client.api.LastJson
+
+    for mediaItem in timelineFeed["items"]:
+
+        mediaId = mediaItem["id"]
+        client.api.mediaInfo(mediaId)
+        print(json.dumps(client.api.LastJson, indent=4))
+        break
 
 
-    #api.timelineFeed()
-
-    #print(json.dumps(api.LastJson, indent=4))
