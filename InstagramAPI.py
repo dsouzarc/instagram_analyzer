@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import requests
 import random
@@ -13,19 +12,36 @@ import copy
 import math
 import sys
 
-#The urllib library was split into other modules from Python 2 to Python 3
+#Urllib split from Python 2 to Python 3
 if sys.version_info.major == 3:
     import urllib.parse
 
-#from ImageUtils import getImageSize
 from requests_toolbelt import MultipartEncoder
 
-class InstagramAPI:
-    
-    API_URL = 'https://i.instagram.com/api/v1/'
+import Constants
 
+
+####################################################################
+#                   Modified by Ryan D'souza
+#       	Handles interactions with Instagram's API
+#			https://github.com/LevPasha/Instagram-API-python
+####################################################################
+
+
+class InstagramAPI(object):
+
+
+    ####################################################################
+    """         Class responsible for interacting with the API 
+                    See Instagram.py for running example			 """
+    ####################################################################
+    
+
+	#Preferences file
     CONSTANTS_FILE_NAME = "Constants.json"
     
+	#Other constants
+    API_URL = 'https://i.instagram.com/api/v1/'
     USER_AGENT = None
     IG_SIG_KEY = None
     EXPERIMENTS = None
@@ -44,6 +60,7 @@ class InstagramAPI:
 
 
     def __init__(self, username, password, debug = False):
+		""" Constructor """
 
         constants = json.load(open(self.CONSTANTS_FILE_NAME))
 
