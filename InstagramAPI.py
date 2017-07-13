@@ -18,8 +18,6 @@ if sys.version_info.major == 3:
 
 from requests_toolbelt import MultipartEncoder
 
-import Constants
-
 
 ####################################################################
 #                   Modified by Ryan D'souza
@@ -32,7 +30,7 @@ class InstagramAPI(object):
 
 
     ####################################################################
-    """         Class responsible for interacting with the API 
+    """         Class that acts as an Instagram API Client
                     See Instagram.py for running example			 """
     ####################################################################
     
@@ -60,7 +58,7 @@ class InstagramAPI(object):
 
 
     def __init__(self, username, password, debug = False):
-		""" Constructor """
+        """ Constructor """
 
         constants = json.load(open(self.CONSTANTS_FILE_NAME))
 
