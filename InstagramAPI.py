@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import datetime
 import requests
 import random
 import json
@@ -9,6 +10,7 @@ import urllib
 import uuid
 import time
 import copy
+import pickle
 import math
 import sys
 
@@ -37,6 +39,7 @@ class InstagramAPI(object):
 
 	#Preferences file
     CONSTANTS_FILE_NAME = "Constants.json"
+    REQUESTS_FILE_NAME = "Requests.pkl"
     
 	#Other constants
     API_URL = 'https://i.instagram.com/api/v1/'
@@ -48,35 +51,123 @@ class InstagramAPI(object):
     username = None
     password = None
     username_id = None
-    is_logged_in = False
-    last_response = None
     device_id = None
     uuid = None
+    is_logged_in = False
+    last_response = None
     session = None
     rank_token = None
     token = None
+
+    last_login_datetime = None
+
+    LastJson = None
 
 
     def __init__(self, username, password, debug = False):
         """ Constructor """
 
-        constants = json.load(open(self.CONSTANTS_FILE_NAME))
+        constants_file = open(self.CONSTANTS_FILE_NAME)
+        constants = json.load(constants_file)
+        constants_file.close()
 
         self.DEVICE_SETTINGS = constants["DEVICE_SETTINGS"]
-        self.USER_AGENT = constants["USER_AGENT"].format(**self.DEVICE_SETTINGS)
+        self.USER_AGENT = str(constants["USER_AGENT"]).format(**self.DEVICE_SETTINGS)
         self.IG_SIG_KEY = constants["IG_SIG_KEY"]
         self.EXPERIMENTS = constants["EXPERIMENTS"]
         self.SIG_KEY_VERSION = constants["SIG_KEY_VERSION"]
 
-        m = hashlib.md5()
-        m.update(username.encode('utf-8') + password.encode('utf-8'))
-        self.device_id = self.generateDeviceId(m.hexdigest())
-        self.setUser(username, password)
+        self.username = username
+        self.password = password
         self.is_logged_in = False
         self.last_response = None
 
+        self.session = requests.session()
 
-    def setUser(self, username, password):
+        #Get the last time we logged in 
+        try:
+            datetime_string = constants["last_login_time"]
+            self.last_login_datetime = datetime.datetime.strptime(datetime_string, "%Y-%m-%d %H:%M:%S")
+            print("FOUND OLD DATE")
+        except Exception as date_cast_exception:
+            print("EXCEPTION OR NO OLD: %s" % date_cast_exception)
+            self.last_login_datetime = None
+
+        #If we logged in under a week ago
+        if self.last_login_datetime and (datetime.datetime.now() - self.last_login_datetime).days < 7:
+            print("NO LOGIN NEEDED")
+            self.is_logged_in = True
+            self.username_id = constants["username_id"]
+            self.uuid = constants["uuid"]
+            self.device_id = constants["device_id"]
+            self.rank_token = constants["rank_token"]
+            self.token = constants["csrftoken"]
+
+            with open(self.REQUESTS_FILE_NAME, "r") as requests_file:
+                self.session = pickle.load(requests_file)
+
+
+        #If we never logged in or logged in over a week ago
+        else:
+            print("LOGIN NEEDED")
+            m = hashlib.md5()
+            m.update(username.encode('utf-8') + password.encode('utf-8'))
+            self.device_id = self.generateDeviceId(m.hexdigest())
+            self.uuid = self.generateUUID(False)
+            #self.uuid = self.generateUUID(True)
+            #self.phone_id = self.generateUUID(True)
+
+            if (self.SendRequest('si/fetch_headers/?challenge_type=signup&guid=' + self.uuid, None, True)):
+
+                self.token = self.last_response.cookies['csrftoken']
+
+                print("HERE: %s " % self.last_response)
+
+                data = {
+                        'phone_id'   : self.device_id,
+                        '_csrftoken' : self.token,
+                        'username'   : self.username,
+                        'guid'       : self.uuid,
+                        'device_id'  : self.device_id,
+                        'password'   : self.password,
+                        'login_attempt_count' : '0'
+                }
+
+                if (self.SendRequest('accounts/login/', self.generateSignature(json.dumps(data)), True)):
+                    self.is_logged_in = True
+                    self.username_id = self.LastJson["logged_in_user"]["pk"]
+                    self.rank_token = "%s_%s" % (self.username_id, self.uuid)
+                    self.token = self.last_response.cookies["csrftoken"]
+                    self.last_login_datetime = datetime.datetime.now()
+                    
+                    constants["username_id"] = self.username_id 
+                    constants["uuid"] = self.uuid
+                    constants["device_id"] = self.device_id
+                    constants["rank_token"] = self.rank_token
+                    constants["csrftoken"] = self.token
+                    constants["last_login_time"] = self.last_login_datetime.strftime("%Y-%m-%d %H:%M:%S")
+
+                    print("DOWN: %s " % self.LastJson)
+                    from pprint import pprint
+                    pprint(vars(self.session))
+                    print("FINISHED")
+                    print("Saving : " + json.dumps(constants, indent=4))
+
+                    with open(self.CONSTANTS_FILE_NAME, "w") as constants_file:
+                        json.dump(constants, constants_file, ensure_ascii=True, indent=4)
+
+                    with open(self.REQUESTS_FILE_NAME, "wb") as requests_file:
+                        pickle.dump(self.session, requests_file, pickle.HIGHEST_PROTOCOL)
+
+                    self.syncFeatures()
+                    self.autoCompleteUserList()
+                    self.timelineFeed()
+                    self.getv2Inbox()
+                    self.getRecentActivity()
+                    print ("Login success!\n")
+
+
+    def set_user(self, username, password):
         self.username = username
         self.password = password
         self.uuid = self.generateUUID(True)
@@ -84,17 +175,18 @@ class InstagramAPI(object):
     def login(self, force = False):
         if (not self.is_logged_in or force):
             self.session = requests.Session()
-            # if you need proxy make something like this:
-            # self.session.proxies = {"https" : "http://proxyip:proxyport"}
+
             if (self.SendRequest('si/fetch_headers/?challenge_type=signup&guid=' + self.generateUUID(False), None, True)):
 
-                data = {'phone_id'   : self.generateUUID(True),
+                data = {
+                        'phone_id'   : self.device_id,
                         '_csrftoken' : self.last_response.cookies['csrftoken'],
                         'username'   : self.username,
                         'guid'       : self.uuid,
                         'device_id'  : self.device_id,
                         'password'   : self.password,
-                        'login_attempt_count' : '0'}
+                        'login_attempt_count' : '0'
+                }
 
                 if (self.SendRequest('accounts/login/', self.generateSignature(json.dumps(data)), True)):
                     self.is_logged_in = True
@@ -633,6 +725,11 @@ class InstagramAPI(object):
                                 'Accept-Language' : 'en-US',
                                 'User-Agent' : self.USER_AGENT})
 
+        print(self.session.headers)
+
+        from pprint import pprint
+        pprint(vars(self.session))
+
         if (post != None): # POST
             response = self.session.post(self.API_URL + endpoint, data=post) # , verify=False
         else: # GET
@@ -643,7 +740,7 @@ class InstagramAPI(object):
             self.LastJson = json.loads(response.text)
             return True
         else:
-            print ("Request return " + str(response.status_code) + " error!")
+            print ("Request return " + str(response.status_code) + " error! " + str(response.json()))
             # for debugging
             try:
                 self.last_response = response
