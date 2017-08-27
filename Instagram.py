@@ -30,9 +30,6 @@ class Instagram(object):
 
         self._api = InstagramAPI(instagram_username, instagram_password)
 
-        self._api = InstagramAPI(instagram_username, instagram_password)
-        self._api.login()
-
 
 	#Interactive way to unfollow those who don't follow back
     def following_follower_diff(self):
@@ -68,11 +65,11 @@ class Instagram(object):
                     second_command = raw_input("\nEnter 'U' to unfollow " + full_name + " or any other key to do nothing: ")
 
                     if second_command == 'U' or second_command == 'u':
-                        unfollow_result = self.api.unfollow(user_id)
+                        unfollow_result = self._api.unfollow(user_id)
                         print(unfollow_result)
 
                 elif command == 'U' or command == 'u':
-                    unfollow_result = self.api.unfollow(user_id)
+                    unfollow_result = self._api.unfollow(user_id)
                     print(unfollow_result)
 
 
@@ -84,8 +81,50 @@ if __name__ == "__main__":
 
     client = Instagram(instagram_username, instagram_password)
 
-    client.following_follower_diff()
-    exit(0);
+
+    raw_media_info = json.loads(open("media_info.json").read())
+    raw_media_info = raw_media_info["items"][0]
+
+    raw_tagged_users = raw_media_info["usertags"]
+    tagged_users = []
+    print(raw_tagged_users)
+    for tag_key, users in raw_tagged_users.items():
+        for user_dict in users:
+            if "user" in user_dict and "username" in user_dict["user"]:
+                user = user_dict["user"]
+                tagged_user = {
+                    "full_name": user["full_name"],
+                    "profile_picture_link": user["profile_pic_url"],
+                    "pk": user["pk"],
+                    "is_private": user["is_private"],
+                    "username": user["username"]
+                }
+                tagged_users.append(tagged_user)
+
+
+
+
+
+    """
+    raw_user_info = json.loads(open("user_info.json").read())
+    raw_user_info = raw_user_info["user"]
+
+    user_info = {}
+    user_info["name"] = raw_user_info["full_name"]
+    user_info["profile_picture_link"] = raw_user_info["hd_profile_pic_url_info"]["url"]
+    user_info["following_count"] = raw_user_info["following_count"]
+    user_info["follower_count"] = raw_user_info["follower_count"]
+    user_info["biography"] = raw_user_info["biography"]
+    user_info["pk"] = raw_user_info["pk"]
+    user_info["username"] = raw_user_info["username"]
+    user_info["is_private"] = raw_user_info["is_private"]
+    user_info["is_business"] = raw_user_info["is_business"]
+
+    print(json.dumps(user_info, indent=4))
+
+    """
+
+    """
 
     client.api.timelineFeed()
     timeline_feed = client.api.LastJson
@@ -97,4 +136,4 @@ if __name__ == "__main__":
         print(json.dumps(client.api.LastJson, indent=4))
         break
 
-
+    """
