@@ -1,18 +1,19 @@
 #!/usr/bin/env python
 
+import copy
 import datetime
-import requests
-import random
-import json
 import hashlib
 import hmac
+import json
+import math
+import os.path
+import pickle
+import random
+import requests
+import sys
+import time
 import urllib
 import uuid
-import time
-import copy
-import pickle
-import math
-import sys
 
 #Urllib split from Python 2 to Python 3
 if sys.version_info.major == 3:
@@ -81,21 +82,26 @@ class InstagramAPI(object):
         self.password = password
         self.is_logged_in = False
         self.last_response = None
-
         self.session = requests.session()
+
+        datetime_format = "%Y-%m-%d %H:%M:%S"
 
         #Get the last time we logged in 
         try:
             datetime_string = constants["last_login_time"]
-            self.last_login_datetime = datetime.datetime.strptime(datetime_string, "%Y-%m-%d %H:%M:%S")
-            print("FOUND OLD DATE")
+            self.last_login_datetime = datetime.datetime.strptime(datetime_string, datetime_format)
+
         except Exception as date_cast_exception:
-            print("EXCEPTION OR NO OLD: %s" % date_cast_exception)
+            print("No old date found: %s" % date_cast_exception)
             self.last_login_datetime = None
 
-        #If we logged in under a week ago
-        if self.last_login_datetime and (datetime.datetime.now() - self.last_login_datetime).days < 7:
-            print("NO LOGIN NEEDED")
+
+        #If we logged in under a week ago and we have the requests object saved
+        if (self.last_login_datetime and 
+                (datetime.datetime.now() - self.last_login_datetime).days < 7 and 
+                os.path.isfile(self.REQUESTS_FILE_NAME)):
+
+            print("No login needed")
             self.is_logged_in = True
             self.username_id = constants["username_id"]
             self.uuid = constants["uuid"]
@@ -109,19 +115,16 @@ class InstagramAPI(object):
 
         #If we never logged in or logged in over a week ago
         else:
-            print("LOGIN NEEDED")
+            print("Login needed")
             m = hashlib.md5()
             m.update(username.encode('utf-8') + password.encode('utf-8'))
             self.device_id = self.generateDeviceId(m.hexdigest())
             self.uuid = self.generateUUID(False)
-            #self.uuid = self.generateUUID(True)
-            #self.phone_id = self.generateUUID(True)
 
-            if (self.SendRequest('si/fetch_headers/?challenge_type=signup&guid=' + self.uuid, None, True)):
+            send_url = 'si/fetch_headers/?challenge_type=signup&guid=' + self.uuid
+            if (self.SendRequest(send_url, None, True)):
 
                 self.token = self.last_response.cookies['csrftoken']
-
-                print("HERE: %s " % self.last_response)
 
                 data = {
                         'phone_id'   : self.device_id,
@@ -133,7 +136,9 @@ class InstagramAPI(object):
                         'login_attempt_count' : '0'
                 }
 
-                if (self.SendRequest('accounts/login/', self.generateSignature(json.dumps(data)), True)):
+                post_data = self.generateSignature(json.dumps(data))
+                if (self.SendRequest('accounts/login/', post_data, True)):
+
                     self.is_logged_in = True
                     self.username_id = self.LastJson["logged_in_user"]["pk"]
                     self.rank_token = "%s_%s" % (self.username_id, self.uuid)
@@ -145,94 +150,64 @@ class InstagramAPI(object):
                     constants["device_id"] = self.device_id
                     constants["rank_token"] = self.rank_token
                     constants["csrftoken"] = self.token
-                    constants["last_login_time"] = self.last_login_datetime.strftime("%Y-%m-%d %H:%M:%S")
+                    constants["last_login_time"] = self.last_login_datetime.strftime(datetime_format)
 
-                    print("DOWN: %s " % self.LastJson)
-                    from pprint import pprint
-                    pprint(vars(self.session))
-                    print("FINISHED")
-                    print("Saving : " + json.dumps(constants, indent=4))
 
+                    #Save our data so that we don't have to login again
                     with open(self.CONSTANTS_FILE_NAME, "w") as constants_file:
                         json.dump(constants, constants_file, ensure_ascii=True, indent=4)
 
                     with open(self.REQUESTS_FILE_NAME, "wb") as requests_file:
                         pickle.dump(self.session, requests_file, pickle.HIGHEST_PROTOCOL)
 
+                    #Default methods --> make us seem normal
                     self.syncFeatures()
                     self.autoCompleteUserList()
                     self.timelineFeed()
                     self.getv2Inbox()
                     self.getRecentActivity()
-                    print ("Login success!\n")
+                    print ("Login success! Saved login information \n")
 
-
-    def set_user(self, username, password):
-        self.username = username
-        self.password = password
-        self.uuid = self.generateUUID(True)
-
-    def login(self, force = False):
-        if (not self.is_logged_in or force):
-            self.session = requests.Session()
-
-            if (self.SendRequest('si/fetch_headers/?challenge_type=signup&guid=' + self.generateUUID(False), None, True)):
-
-                data = {
-                        'phone_id'   : self.device_id,
-                        '_csrftoken' : self.last_response.cookies['csrftoken'],
-                        'username'   : self.username,
-                        'guid'       : self.uuid,
-                        'device_id'  : self.device_id,
-                        'password'   : self.password,
-                        'login_attempt_count' : '0'
-                }
-
-                if (self.SendRequest('accounts/login/', self.generateSignature(json.dumps(data)), True)):
-                    self.is_logged_in = True
-                    self.username_id = self.LastJson["logged_in_user"]["pk"]
-                    self.rank_token = "%s_%s" % (self.username_id, self.uuid)
-                    self.token = self.last_response.cookies["csrftoken"]
-
-                    self.syncFeatures()
-                    self.autoCompleteUserList()
-                    self.timelineFeed()
-                    self.getv2Inbox()
-                    self.getRecentActivity()
-                    print ("Login success!\n")
-                    return True;
 
     def syncFeatures(self):
+        """ Syncs features - default code """
+
         data = json.dumps({
-        '_uuid'         : self.uuid,
-        '_uid'          : self.username_id,
-        'id'            : self.username_id,
-        '_csrftoken'    : self.token,
-        'experiments'   : self.EXPERIMENTS
+            '_uuid'         : self.uuid,
+            '_uid'          : self.username_id,
+            'id'            : self.username_id,
+            '_csrftoken'    : self.token,
+            'experiments'   : self.EXPERIMENTS
         })
         return self.SendRequest('qe/sync/', self.generateSignature(data))
+
 
     def autoCompleteUserList(self):
         return self.SendRequest('friendships/autocomplete_user_list/')
 
+
     def timelineFeed(self):
         return self.SendRequest('feed/timeline/')
+
 
     def megaphoneLog(self):
         return self.SendRequest('megaphone/log/')
 
+
     def expose(self):
         data = json.dumps({
-        '_uuid'        : self.uuid,
-        '_uid'         : self.username_id,
-        'id'           : self.username_id,
-        '_csrftoken'   : self.token,
-        'experiment'   : 'ig_android_profile_contextual_feed'
+            '_uuid'        : self.uuid,
+            '_uid'         : self.username_id,
+            'id'           : self.username_id,
+            '_csrftoken'   : self.token,
+            'experiment'   : 'ig_android_profile_contextual_feed'
         })
         return self.SendRequest('qe/expose/', self.generateSignature(data))
 
+
     def logout(self):
         logout = self.SendRequest('accounts/logout/')
+
 
     def uploadPhoto(self, photo, caption = None, upload_id = None):
         if upload_id is None:
@@ -725,20 +700,20 @@ class InstagramAPI(object):
                                 'Accept-Language' : 'en-US',
                                 'User-Agent' : self.USER_AGENT})
 
-        print(self.session.headers)
 
-        from pprint import pprint
-        pprint(vars(self.session))
+        #Handle Post requests
+        if (post != None): 
+            response = self.session.post(self.API_URL + endpoint, data=post)
 
-        if (post != None): # POST
-            response = self.session.post(self.API_URL + endpoint, data=post) # , verify=False
-        else: # GET
+        #Handle GET requests
+        else:
             response = self.session.get(self.API_URL + endpoint) # , verify=False
 
         if response.status_code == 200:
             self.last_response = response
             self.LastJson = json.loads(response.text)
             return True
+
         else:
             print ("Request return " + str(response.status_code) + " error! " + str(response.json()))
             # for debugging
@@ -749,6 +724,7 @@ class InstagramAPI(object):
                 pass
             return False
             
+
     def getTotalFollowers(self,usernameId):
         followers = []
         next_max_id = ''
@@ -762,6 +738,7 @@ class InstagramAPI(object):
             if temp["big_list"] == False:
                 return followers            
             next_max_id = temp["next_max_id"]         
+
 
     def getTotalFollowings(self,usernameId):
         followers = []
@@ -777,6 +754,7 @@ class InstagramAPI(object):
                 return followers            
             next_max_id = temp["next_max_id"] 
 
+
     def getTotalUserFeed(self, usernameId, minTimestamp = None):
         user_feed = []
         next_max_id = ''
@@ -789,15 +767,19 @@ class InstagramAPI(object):
                 return user_feed
             next_max_id = temp["next_max_id"]
 
+
     def getTotalSelfUserFeed(self, minTimestamp = None):
         return self.getTotalUserFeed(self.username_id, minTimestamp) 
     
+
     def getTotalSelfFollowers(self):
         return self.getTotalFollowers(self.username_id)
     
+
     def getTotalSelfFollowings(self):
         return self.getTotalFollowings(self.username_id)
         
+
     def getTotalLikedMedia(self,scan_rate = 1):
         next_id = ''
         liked_items = []
@@ -808,3 +790,4 @@ class InstagramAPI(object):
             for item in temp["items"]:
                 liked_items.append(item)
         return liked_items
+
