@@ -3,5 +3,4 @@
 .DS_Store
 
 Constants.json
-
-Database/
+Requests.pkl
