@@ -715,7 +715,7 @@ class InstagramAPI(object):
             return True
 
         else:
-            print ("Request return " + str(response.status_code) + " error! " + str(response.json()))
+            print ("Request return " + str(response.status_code) + " error! " + response.text)
             # for debugging
             try:
                 self.last_response = response
