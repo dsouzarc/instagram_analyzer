@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 
 import json
+import random
 import subprocess
+import time
+
+import pymongo
+from pymongo import MongoClient
 
 import CredentialManager
 from InstagramAPI import InstagramAPI
@@ -23,12 +28,20 @@ class Instagram(object):
 
 
     _api = None
+    _database = None
+    _users_collection = None
 
 
     def __init__(self, instagram_username, instagram_password):
         """ Constructor """
 
         self._api = InstagramAPI(instagram_username, instagram_password)
+
+        database_client = MongoClient('localhost', 27017)
+        self._database = database_client["instagram"]
+        self._users_collection = self._database["users"]
+
+        self._users_collection.create_index("pk", unique=True)
 
 
 	#Interactive way to unfollow those who don't follow back
@@ -73,14 +86,97 @@ class Instagram(object):
                     print(unfollow_result)
 
 
+    def add_followers_to_db(self):
+
+        all_followers = json.load(open("all_followers.json", "r"))
+
+        for follower in all_followers:
+
+            follower_id = follower["pk"]
+            raw_user_result = self._api.getUsernameInfo(follower_id)
+            raw_user_info = self._api.LastJson
+
+            raw_user_info = raw_user_info["user"]
+
+            user_info = {}
+            user_info["full_name"] = raw_user_info["full_name"]
+            user_info["profile_picture_link"] = raw_user_info["hd_profile_pic_url_info"]["url"]
+            user_info["following_count"] = raw_user_info["following_count"]
+            user_info["follower_count"] = raw_user_info["follower_count"]
+            user_info["biography"] = raw_user_info["biography"]
+            user_info["pk"] = raw_user_info["pk"]
+            user_info["username"] = raw_user_info["username"]
+            user_info["is_private"] = raw_user_info["is_private"]
+            user_info["is_business"] = raw_user_info["is_business"]
+
+
+            try:
+                inserted_result = self._users_collection.insert_one(user_info)
+
+                if inserted_result.acknowledged is False:
+                    print("ERROR INSERTING: %s", user_info)
+                else:
+                    print("Inserted: %s", inserted_result.inserted_id)
+
+            except pymongo.errors.DuplicateKeyError:
+                
+                self._users_collection.delete_one({"pk": user_info["pk"]})
+
+                inserted_result = self._users_collection.insert_one(user_info)
+
+                if inserted_result.acknowledged is False:
+                    print("ERROR UPDATING: %s", user_info)
+                else:
+                    print("Updated: %s", inserted_result.inserted_id)
+
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
 
     instagram_username = CredentialManager.get_value("InstagramUsername")
     instagram_password = CredentialManager.get_value("InstagramPassword")
-
     client = Instagram(instagram_username, instagram_password)
 
+    all_followers = json.load(open("all_followers.json"))
+    all_following = json.load(open("all_following.json"))
+
+
+    follower = all_followers[0]
+    print(follower["pk"])
+
+    client.add_followers_to_db()
+
+
+    exit(0)
+
+
+    print("Finished parsing")
+
+    print(json.dumps(user_info, indent=4))
+
+    
+
+
+
+
+    """
+    all_followers = client._api.getTotalSelfFollowers()
+    all_following = client._api.getTotalSelfFollowings()
+
+    with open("all_followers.json", "w") as all_followers_file:
+        json.dump(all_followers, all_followers_file, indent=4)
+
+    with open("all_following.json", "w") as all_following_file:
+        json.dump(all_following, all_following_file, indent=4)
+    """
+
+    exit(0)
 
     raw_media_info = json.loads(open("media_info.json").read())
     raw_media_info = raw_media_info["items"][0]
