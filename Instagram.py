@@ -109,7 +109,6 @@ class Instagram(object):
             user_info["is_private"] = raw_user_info["is_private"]
             user_info["is_business"] = raw_user_info["is_business"]
 
-
             try:
                 inserted_result = self._users_collection.insert_one(user_info)
 
@@ -127,12 +126,12 @@ class Instagram(object):
                 if inserted_result.acknowledged is False:
                     print("ERROR UPDATING: %s", user_info)
                 else:
-                    print("Updated: %s", inserted_result.inserted_id)
+                    print("Updated: %s" % inserted_result.inserted_id)
 
 
-
-
-
+            sleep_delay = random.randint(20, 300)
+            print("Sleeping for: %s" % sleep_delay)
+            time.sleep(sleep_delay)
 
 
 
@@ -145,10 +144,6 @@ if __name__ == "__main__":
 
     all_followers = json.load(open("all_followers.json"))
     all_following = json.load(open("all_following.json"))
-
-
-    follower = all_followers[0]
-    print(follower["pk"])
 
     client.add_followers_to_db()
 
