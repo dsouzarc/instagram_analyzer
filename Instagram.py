@@ -32,13 +32,13 @@ class Instagram(object):
     _users_collection = None
 
 
-    def __init__(self, instagram_username, instagram_password):
+    def __init__(self, instagram_username, instagram_password, mongoclient_host):
         """ Constructor """
 
         self._api = InstagramAPI(instagram_username, instagram_password)
 
-        database_client = MongoClient('localhost', 27017)
-        self._database = database_client["instagram"]
+        database_client = MongoClient(mongoclient_host)
+        self._database = database_client["Instagram"]
         self._users_collection = self._database["users"]
 
         self._users_collection.create_index("pk", unique=True)
@@ -129,7 +129,7 @@ class Instagram(object):
                     print("Updated: %s" % inserted_result.inserted_id)
 
 
-            sleep_delay = random.randint(20, 300)
+            sleep_delay = random.randint(2, random.randint(6, 180))
             print("Sleeping for: %s" % sleep_delay)
             time.sleep(sleep_delay)
 
@@ -140,7 +140,16 @@ if __name__ == "__main__":
 
     instagram_username = CredentialManager.get_value("InstagramUsername")
     instagram_password = CredentialManager.get_value("InstagramPassword")
-    client = Instagram(instagram_username, instagram_password)
+    mongodb_username = CredentialManager.get_value("InstagramMongoDBUsername")
+    mongodb_password = CredentialManager.get_value("InstagramMongoDBPassword")
+    mongodb_ip_address = CredentialManager.get_value("InstagramMongoDBIPAddress")
+    mongodb_port = CredentialManager.get_value("InstagramMongoDBPort")
+
+    mongo_client_host = ("mongodb://{username}:{password}@{ip_address}:{port}/"
+                            .format(username=mongodb_username, password=mongodb_password,
+                                        ip_address=mongodb_ip_address, port=mongodb_port))
+
+    client = Instagram(instagram_username, instagram_password, mongo_client_host)
 
     all_followers = json.load(open("all_followers.json"))
     all_following = json.load(open("all_following.json"))
