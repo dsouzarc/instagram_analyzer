@@ -33,7 +33,13 @@ class Instagram(object):
 
 
     def __init__(self, instagram_username, instagram_password, mongoclient_host):
-        """ Constructor """
+        """ Constructor
+        
+            :param instagram_username: string version of username i.e.: 'dsouzarc'
+            :param instagram_password: string version of password
+            :param mongoclient_host: string host for MongoDB instance i.e.: "localhost://27017"
+            
+        """
 
         self._api = InstagramAPI(instagram_username, instagram_password)
 
@@ -71,11 +77,15 @@ class Instagram(object):
 
 				#Prompt for unfollowing/other actions
                 print(full_name + " not following you: \t " + profile_link)
-                command = raw_input("Type 'O' to open in brower, 'U' to unfollow,  or any other key to do nothing: ")
+
+                command = raw_input("Type 'O' to open in brower, 'U' to unfollow, "
+                                        "or any other key to do nothing: ")
+
                 if command == 'O' or command == 'o':
                     subprocess.Popen(['open', profile_link])
 
-                    second_command = raw_input("\nEnter 'U' to unfollow " + full_name + " or any other key to do nothing: ")
+                    second_command = raw_input("\nEnter 'U' to unfollow " + full_name + 
+                                                    " or any other key to do nothing: ")
 
                     if second_command == 'U' or second_command == 'u':
                         unfollow_result = self._api.unfollow(user_id)
@@ -86,8 +96,14 @@ class Instagram(object):
                     print(unfollow_result)
 
 
+    #Warning: Long process - makes a GET request for every follower
     def add_followers_to_db(self):
+        """ Gets a list of all the followers on Instagram and for each follower
+                Gets the follower's information (1 API call) and saves it to MongoDB
+        """
 
+        #TODO: Delete the json.load version
+        #all_followers = self._api.getTotalSelfFollowers()
         all_followers = json.load(open("all_followers.json", "r"))
 
         for follower in all_followers:
@@ -120,7 +136,6 @@ class Instagram(object):
             except pymongo.errors.DuplicateKeyError:
                 
                 self._users_collection.delete_one({"pk": user_info["pk"]})
-
                 inserted_result = self._users_collection.insert_one(user_info)
 
                 if inserted_result.acknowledged is False:
@@ -137,9 +152,11 @@ class Instagram(object):
 
 
 if __name__ == "__main__":
+    """ Main method - run from here """
 
     instagram_username = CredentialManager.get_value("InstagramUsername")
     instagram_password = CredentialManager.get_value("InstagramPassword")
+
     mongodb_username = CredentialManager.get_value("InstagramMongoDBUsername")
     mongodb_password = CredentialManager.get_value("InstagramMongoDBPassword")
     mongodb_ip_address = CredentialManager.get_value("InstagramMongoDBIPAddress")
@@ -151,36 +168,12 @@ if __name__ == "__main__":
 
     client = Instagram(instagram_username, instagram_password, mongo_client_host)
 
-    all_followers = json.load(open("all_followers.json"))
-    all_following = json.load(open("all_following.json"))
-
     client.add_followers_to_db()
 
 
     exit(0)
 
 
-    print("Finished parsing")
-
-    print(json.dumps(user_info, indent=4))
-
-    
-
-
-
-
-    """
-    all_followers = client._api.getTotalSelfFollowers()
-    all_following = client._api.getTotalSelfFollowings()
-
-    with open("all_followers.json", "w") as all_followers_file:
-        json.dump(all_followers, all_followers_file, indent=4)
-
-    with open("all_following.json", "w") as all_following_file:
-        json.dump(all_following, all_following_file, indent=4)
-    """
-
-    exit(0)
 
     raw_media_info = json.loads(open("media_info.json").read())
     raw_media_info = raw_media_info["items"][0]
