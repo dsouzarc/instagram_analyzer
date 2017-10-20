@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 
+from bson import json_util
+from pymongo import MongoClient
+from InstagramAPI import InstagramAPI
+from Users import InstagramUser
+
+import pymongo
+import CredentialManager
+import requests
+
 import json
 import random
 import subprocess
 import time
-
-import pymongo
-from pymongo import MongoClient
-
-import CredentialManager
-from InstagramAPI import InstagramAPI
 
 
 ####################################################################
@@ -26,6 +29,8 @@ class Instagram(object):
                     See bottom for run example                      """
     ####################################################################
 
+
+    IS_DEVELOPMENT = True
 
     _api = None
     _database = None
@@ -96,55 +101,88 @@ class Instagram(object):
                     print(unfollow_result)
 
 
+    def get_messages(self):
+        """ Prints a list of messages in the inbox """
+
+        request_response = self._api.getv2Inbox()
+        actual_responses = self._api.LastJson
+
+        inbox = actual_responses["inbox"]
+        threads = inbox["threads"]
+
+        for thread in threads:
+            thread_users = thread["users"]
+            usernames = list()
+            for thread_user in thread_users:
+                usernames.append(thread_user["username"])
+                usernames.append(thread_user["full_name"])
+
+            print("Group chat with: " + ", ".join(usernames))
+
+            sender = thread["inviter"]
+            print("From: " + sender["username"] + " " + sender["full_name"])
+
+            messages = thread["items"]
+            for message in messages:
+                if "text" in message:
+                    print(message["text"])
+                elif "reel_share" in message:
+                    print(message["reel_share"]["text"])
+                else:
+                    print("Unable to find: " + json.dumps(thread, indent=4))
+
+
     #Warning: Long process - makes a GET request for every follower
     def add_followers_to_db(self):
         """ Gets a list of all the followers on Instagram and for each follower
                 Gets the follower's information (1 API call) and saves it to MongoDB
         """
 
-        #TODO: Delete the json.load version
-        #all_followers = self._api.getTotalSelfFollowers()
-        all_followers = json.load(open("all_followers.json", "r"))
+        if self.IS_DEVELOPMENT:
+            all_followers = json.load(open("all_followers.json", "r"))
+        else:
+            all_followers = self._api.getTotalSelfFollowers()
+            json.dump(all_followers, open("all_folllowers.json", "w"), indent=4)
+
 
         for follower in all_followers:
 
             follower_id = follower["pk"]
-            raw_user_result = self._api.getUsernameInfo(follower_id)
-            raw_user_info = self._api.LastJson
-
-            raw_user_info = raw_user_info["user"]
-
-            user_info = {}
-            user_info["full_name"] = raw_user_info["full_name"]
-            user_info["profile_picture_link"] = raw_user_info["hd_profile_pic_url_info"]["url"]
-            user_info["following_count"] = raw_user_info["following_count"]
-            user_info["follower_count"] = raw_user_info["follower_count"]
-            user_info["biography"] = raw_user_info["biography"]
-            user_info["pk"] = raw_user_info["pk"]
-            user_info["username"] = raw_user_info["username"]
-            user_info["is_private"] = raw_user_info["is_private"]
-            user_info["is_business"] = raw_user_info["is_business"]
 
             try:
-                inserted_result = self._users_collection.insert_one(user_info)
+                raw_user_result = self._api.getUsernameInfo(follower_id)
+                raw_user_info = self._api.LastJson
+                raw_user_info = raw_user_info["user"]
 
-                if inserted_result.acknowledged is False:
-                    print("ERROR INSERTING: %s", user_info)
-                else:
-                    print("Inserted: %s", inserted_result.inserted_id)
+                user = InstagramUser(raw_user_info)
+                user.add_update("inserted")
 
-            except pymongo.errors.DuplicateKeyError:
-                
-                self._users_collection.delete_one({"pk": user_info["pk"]})
-                inserted_result = self._users_collection.insert_one(user_info)
+                try:
+                    inserted_result = self._users_collection.insert_one(user.storage_dict())
 
-                if inserted_result.acknowledged is False:
-                    print("ERROR UPDATING: %s", user_info)
-                else:
-                    print("Updated: %s" % inserted_result.inserted_id)
+                    if inserted_result.acknowledged is False:
+                        print("ERROR INSERTING: %s", user_info)
+                    else:
+                        print("Inserted: %s", inserted_result.inserted_id)
+
+                except pymongo.errors.DuplicateKeyError:
+                    
+                    self._users_collection.delete_one({"pk": user.pk})
+                    inserted_result = self._users_collection.insert_one(user.storage_dict())
+
+                    if inserted_result.acknowledged is False:
+                        print("ERROR UPDATING: %s", user)
+                    else:
+                        print("Updated: %s" % inserted_result.inserted_id)
 
 
-            sleep_delay = random.randint(2, random.randint(6, 180))
+            except requests.exceptions.RequestException as e:
+                print("Requests exception: %s" % (e))
+                all_followers.append(follower)
+                time.sleep(random.randint(180, 10 * 180))
+
+
+            sleep_delay = random.randint(0, random.randint(6, 180))
             print("Sleeping for: %s" % sleep_delay)
             time.sleep(sleep_delay)
 
@@ -170,7 +208,8 @@ if __name__ == "__main__":
 
     client.add_followers_to_db()
 
-
+    #client.get_messages()
+    #client.following_follower_diff()
     exit(0)
 
 
@@ -198,24 +237,6 @@ if __name__ == "__main__":
 
 
 
-    """
-    raw_user_info = json.loads(open("user_info.json").read())
-    raw_user_info = raw_user_info["user"]
-
-    user_info = {}
-    user_info["name"] = raw_user_info["full_name"]
-    user_info["profile_picture_link"] = raw_user_info["hd_profile_pic_url_info"]["url"]
-    user_info["following_count"] = raw_user_info["following_count"]
-    user_info["follower_count"] = raw_user_info["follower_count"]
-    user_info["biography"] = raw_user_info["biography"]
-    user_info["pk"] = raw_user_info["pk"]
-    user_info["username"] = raw_user_info["username"]
-    user_info["is_private"] = raw_user_info["is_private"]
-    user_info["is_business"] = raw_user_info["is_business"]
-
-    print(json.dumps(user_info, indent=4))
-
-    """
 
     """
 
