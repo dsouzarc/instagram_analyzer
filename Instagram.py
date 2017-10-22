@@ -138,8 +138,16 @@ class Instagram(object):
                 Gets the follower's information (1 API call) and saves it to MongoDB
         """
 
+        skip_users_pk = set()
+
+
         if self.IS_DEVELOPMENT:
             all_followers = json.load(open("all_followers.json", "r"))
+
+            saved_users_pk = self._users_collection.find({}, {'pk': 1})
+            for saved_user_pk in saved_users_pk:
+                skip_users_pk.add(saved_user_pk['pk'])
+
         else:
             all_followers = self._api.getTotalSelfFollowers()
             json.dump(all_followers, open("all_folllowers.json", "w"), indent=4)
@@ -148,6 +156,10 @@ class Instagram(object):
         for follower in all_followers:
 
             follower_id = follower["pk"]
+
+            #If we're in development and we already stored this user, skip them
+            if self.IS_DEVELOPMENT and follower_id in skip_users_pk:
+                continue
 
             try:
                 raw_user_result = self._api.getUsernameInfo(follower_id)
@@ -163,7 +175,7 @@ class Instagram(object):
                     if inserted_result.acknowledged is False:
                         print("ERROR INSERTING: %s", user_info)
                     else:
-                        print("Inserted: %s", inserted_result.inserted_id)
+                        print("Inserted: %s\t%s\t%s" % (user.full_name, user.username, inserted_result.inserted_id))
 
                 except pymongo.errors.DuplicateKeyError:
                     
