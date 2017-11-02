@@ -133,32 +133,35 @@ class Instagram(object):
 
 
     #Warning: Long process - makes a GET request for every follower
-    def add_followers_to_db(self):
-        """ Gets a list of all the followers on Instagram and for each follower
+    def add_followers_to_db(self, skip_saved=True):
+        """Gets a list of all the followers on Instagram and for each follower
                 Gets the follower's information (1 API call) and saves it to MongoDB
+
+            :param skip_saved: bool indicating whether to skip already saved data
         """
 
         skip_users_pk = set()
 
-
+        # Load/save follower data if we already have it
         if self.IS_DEVELOPMENT:
             all_followers = json.load(open("all_followers.json", "r"))
+        else:
+            all_followers = self._api.getTotalSelfFollowers()
+            json.dump(all_followers, open("all_followers.json", "w"), indent=4)
 
+        # If we want to skip over the data we already have stored
+        if skip_saved:
             saved_users_pk = self._users_collection.find({}, {'pk': 1})
             for saved_user_pk in saved_users_pk:
                 skip_users_pk.add(saved_user_pk['pk'])
-
-        else:
-            all_followers = self._api.getTotalSelfFollowers()
-            json.dump(all_followers, open("all_folllowers.json", "w"), indent=4)
 
 
         for follower in all_followers:
 
             follower_id = follower["pk"]
 
-            #If we're in development and we already stored this user, skip them
-            if self.IS_DEVELOPMENT and follower_id in skip_users_pk:
+            # If we want to skip this already stored this user
+            if skip_saved and follower_id in skip_users_pk:
                 continue
 
             try:
@@ -166,7 +169,7 @@ class Instagram(object):
                 raw_user_info = self._api.LastJson
                 raw_user_info = raw_user_info["user"]
 
-                user = InstagramUser(raw_user_info)
+                user = InstagramUser(raw_user_info, is_follower=True)
                 user.add_update("inserted")
 
                 try:
@@ -175,7 +178,8 @@ class Instagram(object):
                     if inserted_result.acknowledged is False:
                         print("ERROR INSERTING: %s", user_info)
                     else:
-                        print("Inserted: %s\t%s\t%s" % (user.full_name, user.username, inserted_result.inserted_id))
+                        print("Inserted: %s\t%s\t%s" % (user.full_name, user.username, 
+                                                        inserted_result.inserted_id))
 
                 except pymongo.errors.DuplicateKeyError:
                     
@@ -217,6 +221,9 @@ if __name__ == "__main__":
                                         ip_address=mongodb_ip_address, port=mongodb_port))
 
     client = Instagram(instagram_username, instagram_password, mongo_client_host)
+    client.following_follower_diff()
+
+    exit(0)
 
     client.add_followers_to_db()
 
