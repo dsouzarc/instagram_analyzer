@@ -35,19 +35,24 @@ class InstagramUser(object):
     username = None
     is_private = False
     is_business = False
+    is_follower = False
+    am_following = False
 
     last_updated = None
     updates = None
     states = None
 
 
-    def __init__(self, raw_user_info, last_updated=None, updates=None, states=None):
+    def __init__(self, raw_user_info, last_updated=None, updates=None, 
+                    states=None, is_follower=False, am_following=False):
         """
             Constructor
                 :param raw_user_info: dict JSON response from Instagram getUsernameInfo API call
                 :param last_updated: string YYY-MM-dd for when this user was last updated
                 :param updates: dict{string date: list(operation)} for when/what we did
                 :param states: dict{string date: json difference} 
+                :param is_follower: bool indicating whether or not they follow us
+                :param am_following: bool indicating whether or not we follow them
         """
 
         self.full_name = raw_user_info["full_name"]
@@ -59,6 +64,9 @@ class InstagramUser(object):
         self.username = raw_user_info["username"]
         self.is_private = raw_user_info["is_private"]
         self.is_business = raw_user_info["is_business"]
+
+        self.is_follower = is_follower
+        self.am_following = am_following
 
 
         if last_updated is None:
@@ -105,5 +113,4 @@ class InstagramUser(object):
 
     def storage_dict(self):
         return vars(self)
-
 
