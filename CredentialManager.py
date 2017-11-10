@@ -1,5 +1,11 @@
 #!/usr/bin/python
 
+"""
+    Note: This was written in 2015 when I was first learning Python after 2 years of developing in Java
+            Hence the poor documentation, weird syntax, and abundance of redundant/unneeded semicolons
+"""
+
+
 import base64;
 import json;
 import getpass; 
