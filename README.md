@@ -3,14 +3,14 @@
 ## Instagram Analyzer - Python script
 
 Following my passion for Data Science, this repository hosts code that will be used to analyze Instagram.
+Data is stored in a (private) MongoDB instance for analysis.
 
-
-*Ideas include:*
-- Prime time to posts
+**Ideas include:**
+- Prime time to post
 
 - Measuring how interactions and relationships change over time
 
-- Caption generation.
+- Caption generation
 
 - Heat maps that show where friends post the most number of photos
 
