@@ -132,73 +132,134 @@ class Instagram(object):
                     print("Unable to find: " + json.dumps(thread, indent=4))
 
 
-    #Warning: Long process - makes a GET request for every follower
-    def add_followers_to_db(self, skip_saved=True):
-        """Gets a list of all the followers on Instagram and for each follower
-                Gets the follower's information (1 API call) and saves it to MongoDB
+    #Convenience method
+    def get_following(self, from_mongo=True, from_file=False):
+        """Gets a list of all the users we are following on Instagram.
 
-            :param skip_saved: bool indicating whether to skip already saved data
+            :param from_mongo: bool for whether we should get saved Mongo data or live data
+            :param from_file: bool for whether we should get the data from a saved file
+
+            :return dict(pk, dict): dict of who we are following. key: user PK, value: user
         """
 
-        skip_users_pk = set()
+        all_following = dict()
+        following = list()
 
-        # Load/save follower data if we already have it
-        if self.IS_DEVELOPMENT:
-            all_followers = json.load(open("all_followers.json", "r"))
+        #Get the data from Mongo
+        if from_mongo:
+            following = self._users_collection.find({'am_following': True})
+
+        #Get the data from a saved file
+        elif not from_mongo and from_file:
+            saved_following = json.load(open('all_following.json', 'r'))
+
+        #Get the live data
         else:
-            all_followers = self._api.getTotalSelfFollowers()
-            json.dump(all_followers, open("all_followers.json", "w"), indent=4)
+            following = self._api.getTotalSelfFollowers()
+            json.dump(following, open('all_following.json', 'w'), indent=4)
 
-        # If we want to skip over the data we already have stored
+
+        for saved_following in following:
+            saved_following['am_following'] = True
+            all_following[saved_following['pk']] = saved_following
+
+        return all_following
+
+
+    #Convenience method
+    def get_followers(self, from_mongo=True, from_file=False):
+        """Gets a list of all the users that follow us on Instagram
+
+            :param from_mongo: bool for whether we should get saved Mongo data or live data
+            :param from_file: bool for whether we should get the data from a saved file
+
+            :return dict(pk, dict): dict of who follows us. key: user PK, value: user
+        """
+
+        all_followers = dict()
+        followers = list()
+
+        #Get the data from Mongo
+        if from_mongo:
+            followers = self._users_collection.find({'is_follower': True})
+
+        #Get the data from a saved file
+        elif not from_mongo and from_file:
+            followers = json.load(open('all_followers.json', 'r'))
+
+        #Get the live data
+        else:
+            followers = self._api.getTotalSelfFollowers()
+            json.dump(following, open('all_followers.json', 'w'), indent=4)
+
+
+        for follower in followers:
+            follower['is_follower'] = True
+            all_followers[follower['pk']] = follower
+
+        return all_followers
+
+
+    #For adding user information to Mongo
+    def add_users_to_db(self, user_pks, skip_saved=True, is_follower=False, am_following=False):
+        """Given a list of users, for each user, gets their information (1 API call)
+            and saves it to MongoDB
+
+            :param user_pks: list(int) of users' PKs
+            :param skip_saved: bool indicating if we should replace the data if it is in Mongo
+            :param is_follower: bool indicating if the user follows us
+            :param am_following: bool indicating if we follow the user
+        """
+
+        skip_user_pks = set()
+
+        #Add the saved user PKs from MongoDB to the Set
         if skip_saved:
-            saved_users_pk = self._users_collection.find({}, {'pk': 1})
-            for saved_user_pk in saved_users_pk:
-                skip_users_pk.add(saved_user_pk['pk'])
+            saved_user_pks = self._users_collection.find({}, {'pk': 1})
+            for saved_user_pk in saved_user_pks:
+                skip_user_pks.add(saved_user_pk)
 
 
-        for follower in all_followers:
-
-            follower_id = follower["pk"]
-
-            # If we want to skip this already stored this user
-            if skip_saved and follower_id in skip_users_pk:
-                continue
-
-            try:
-                raw_user_result = self._api.getUsernameInfo(follower_id)
-                raw_user_info = self._api.LastJson
-                raw_user_info = raw_user_info["user"]
-
-                user = InstagramUser(raw_user_info, is_follower=True)
-                user.add_update("inserted")
+        for user_pk in user_pks:
+            if user_pk not in skip_user_pks:
 
                 try:
-                    inserted_result = self._users_collection.insert_one(user.storage_dict())
+                    raw_user_result = self._api.getUsernameInfo(follower_id)
+                    raw_user_info = self._api.LastJson
+                    raw_user_info = raw_user_info["user"]
 
-                    if inserted_result.acknowledged is False:
-                        print("ERROR INSERTING: %s", user_info)
-                    else:
-                        print("Inserted: %s\t%s\t%s" % (user.full_name, user.username, 
-                                                        inserted_result.inserted_id))
+                    user = InstagramUser(raw_user_info, 
+                                         is_follower=is_follower, 
+                                         am_following=am_following)
+                    user.add_update("inserted")
 
-                except pymongo.errors.DuplicateKeyError:
-                    
-                    self._users_collection.delete_one({"pk": user.pk})
-                    inserted_result = self._users_collection.insert_one(user.storage_dict())
+                    try:
+                        inserted_result = self._users_collection.insert_one(user.storage_dict())
 
-                    if inserted_result.acknowledged is False:
-                        print("ERROR UPDATING: %s", user)
-                    else:
-                        print("Updated: %s" % inserted_result.inserted_id)
+                        if inserted_result.acknowledged is False:
+                            print("ERROR INSERTING: %s", user_info)
+                        else:
+                            print("Inserted: %s\t%s\t%s" % (user.full_name, user.username, 
+                                                            inserted_result.inserted_id))
+
+                    #User already exists in MongoDB - let's replace
+                    except pymongo.errors.DuplicateKeyError:
+                        self._users_collection.delete_one({"pk": user.pk})
+                        inserted_result = self._users_collection.insert_one(user.storage_dict())
+
+                        if inserted_result.acknowledged is False:
+                            print("ERROR UPDATING: %s", user)
+                        else:
+                            print("Updated: %s" % inserted_result.inserted_id)
+
+                #Error getting user from Instagram API - sleep then try again
+                except requests.exceptions.RequestException as e:
+                    print("Requests exception: %s" % (e))
+                    all_followers.append(follower)
+                    time.sleep(random.randint(180, 10 * 180))
 
 
-            except requests.exceptions.RequestException as e:
-                print("Requests exception: %s" % (e))
-                all_followers.append(follower)
-                time.sleep(random.randint(180, 10 * 180))
-
-
-            sleep_delay = random.randint(0, random.randint(6, 180))
+            sleep_delay = random.randint(0, random.randint(6, 8)) # 180))
             print("Sleeping for: %s" % sleep_delay)
             time.sleep(sleep_delay)
 
@@ -221,10 +282,6 @@ if __name__ == "__main__":
                                         ip_address=mongodb_ip_address, port=mongodb_port))
 
     client = Instagram(instagram_username, instagram_password, mongo_client_host)
-    client.following_follower_diff()
-
-    exit(0)
-
     client.add_followers_to_db()
 
     #client.get_messages()
