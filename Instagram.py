@@ -1,18 +1,19 @@
 #!/usr/bin/env python
+"""Instagram.py: Handles interacting with Instagram API, storing data, and analyzing data"""
+
+import json
+import random
+import subprocess
+import time
 
 from bson import json_util
 from pymongo import MongoClient
 from InstagramAPI import InstagramAPI
 from Users import InstagramUser
 
-import pymongo
 import CredentialManager
+import pymongo
 import requests
-
-import json
-import random
-import subprocess
-import time
 
 
 ####################################################################
@@ -22,13 +23,10 @@ import time
 
 
 class Instagram(object):
-
-
     ####################################################################
-    """         Main class that analyzes Instagram data
+    """         Main class that handles all interactions
                     See bottom for run example                      """
     ####################################################################
-
 
     IS_DEVELOPMENT = True
 
@@ -43,7 +41,6 @@ class Instagram(object):
             :param instagram_username: string version of username i.e.: 'dsouzarc'
             :param instagram_password: string version of password
             :param mongoclient_host: string host for MongoDB instance i.e.: "localhost://27017"
-            
         """
 
         self._api = InstagramAPI(instagram_username, instagram_password)
