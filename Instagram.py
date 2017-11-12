@@ -187,7 +187,7 @@ class Instagram(object):
         #Get the live data
         else:
             followers = self._api.getTotalSelfFollowers()
-            json.dump(following, open('all_followers.json', 'w'), indent=4)
+            json.dump(followers, open('all_followers.json', 'w'), indent=4)
 
 
         for follower in followers:
@@ -218,6 +218,9 @@ class Instagram(object):
 
 
         for user_pk in user_pks:
+            if user_pk in skip_user_pks:
+                print("Skipping: " + str(user_pk))
+
             if user_pk not in skip_user_pks:
 
                 try:
@@ -226,8 +229,8 @@ class Instagram(object):
                     raw_user_info = raw_user_info["user"]
 
                     user = InstagramUser(raw_user_info, 
-                                         is_follower=is_follower, 
-                                         am_following=am_following)
+                                            is_follower=is_follower, 
+                                            am_following=am_following)
                     user.add_update("inserted")
 
                     try:
@@ -279,7 +282,19 @@ if __name__ == "__main__":
                                         ip_address=mongodb_ip_address, port=mongodb_port))
 
     client = Instagram(instagram_username, instagram_password, mongo_client_host)
-    client.add_followers_to_db()
+
+    all_followers = client.get_followers(from_mongo=False, from_file=False)
+    all_following = client.get_following(from_mongo=False, from_file=False)
+
+    for follower_pk in all_followers:
+        if follower_pk in all_following:
+            all_following[follower_pk]["is_follower"] = True
+            all_followers[follower_pk]["am_following"] = True
+            print("Following and followed by: " + all_followers[follower_pk].get("username"))
+
+
+    client.add_users_to_db(all_followers.keys(), skip_saved=True, is_follower=True, am_following=False)
+
 
     #client.get_messages()
     #client.following_follower_diff()
