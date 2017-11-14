@@ -191,7 +191,7 @@ class Instagram(object):
                 try:
                     inserted_result = self._users_collection.insert_one(user.storage_dict())
 
-                    if inserted_result.acknowledged is False:
+                    if not inserted_result.acknowledged:
                         print("ERROR INSERTING: %s", user_info)
                     else:
                         print("Inserted: %s\t%s\t%s" % (user.full_name, user.username, 
@@ -241,9 +241,7 @@ if __name__ == "__main__":
 
     client.add_users_to_db(all_followers.keys(), skip_saved=True, is_follower=True, am_following=False)
 
-
     #client.get_messages()
-    #client.following_follower_diff()
     exit(0)
 
 
