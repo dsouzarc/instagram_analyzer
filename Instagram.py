@@ -52,52 +52,6 @@ class Instagram(object):
         self._users_collection.create_index("pk", unique=True)
 
 
-	#Interactive way to unfollow those who don't follow back
-    def following_follower_diff(self):
-        """ Convenience method for unfollowing people """
-
-        all_followers = self._api.getTotalSelfFollowers()
-        
-        all_followers = self._api.getTotalSelfFollowers()
-        all_following = self._api.getTotalSelfFollowings()
-
-        all_followers_dict = {}
-
-        for follower in all_followers:
-            user_id = follower['pk']
-            all_followers_dict[user_id] = follower
-
-        for following in all_following:
-            user_id = following['pk']
-
-			#The person does not follow us back
-            if user_id not in all_followers_dict:
-
-                full_name = following['full_name'].encode('utf-8')
-                user_name = following['username'].encode('utf-8')
-                profile_link = "https://instagram.com/" + user_name
-
-				#Prompt for unfollowing/other actions
-                print(full_name + " not following you: \t " + profile_link)
-
-                command = raw_input("Type 'O' to open in brower, 'U' to unfollow, "
-                                        "or any other key to do nothing: ")
-
-                if command == 'O' or command == 'o':
-                    subprocess.Popen(['open', profile_link])
-
-                    second_command = raw_input("\nEnter 'U' to unfollow " + full_name + 
-                                                    " or any other key to do nothing: ")
-
-                    if second_command == 'U' or second_command == 'u':
-                        unfollow_result = self._api.unfollow(user_id)
-                        print(unfollow_result)
-
-                elif command == 'U' or command == 'u':
-                    unfollow_result = self._api.unfollow(user_id)
-                    print(unfollow_result)
-
-
     def get_messages(self):
         """ Prints a list of messages in the inbox """
 
@@ -279,7 +233,8 @@ if __name__ == "__main__":
 
     mongo_client_host = ("mongodb://{username}:{password}@{ip_address}:{port}/"
                             .format(username=mongodb_username, password=mongodb_password,
-                                        ip_address=mongodb_ip_address, port=mongodb_port))
+                                    ip_address=mongodb_ip_address, port=mongodb_port))
+    exit(0)
 
     client = Instagram(instagram_username, instagram_password, mongo_client_host)
 
