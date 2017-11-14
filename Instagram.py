@@ -174,7 +174,7 @@ class Instagram(object):
             #New user, get their information
             try:
                 raw_user_result = self._api.getUsernameInfo(user_pk)
-                raw_user_info = self._api.LastJson["user"]
+                raw_user = self._api.LastJson["user"]
 
             #Error getting user from Instagram API - sleep then try again
             except requests.exceptions.RequestException as e:
@@ -184,31 +184,27 @@ class Instagram(object):
 
             #No error - let's insert the user into Mongo
             else:
-                user = InstagramUser(raw_user_info, is_follower=is_follower, 
-                                     am_following=am_following)
+                user = InstagramUser(raw_user, is_follower=is_follower, am_following=am_following)
                 user.add_update("inserted")
 
                 try:
                     inserted_result = self._users_collection.insert_one(user.storage_dict())
-
-                    if not inserted_result.acknowledged:
-                        print("ERROR INSERTING: %s", user_info)
-                    else:
-                        print("Inserted: %s\t%s\t%s" % (user.full_name, user.username, 
-                                                        inserted_result.inserted_id))
 
                 #User already exists in MongoDB - let's replace
                 except pymongo.errors.DuplicateKeyError:
                     self._users_collection.delete_one({"pk": user.pk})
                     inserted_result = self._users_collection.insert_one(user.storage_dict())
 
-                    if inserted_result.acknowledged is False:
-                        print("ERROR UPDATING: %s", user)
+                finally:
+                    if inserted_result.acknowledged:
+                        print("Upserted: %s\t%s\t%s" % (user.full_name, user.username, 
+                                                        inserted_result.inserted_id))
                     else:
-                        print("Updated: %s" % inserted_result.inserted_id)
+                        print("ERROR UPSERTING: %s", user_info)
+
 
             #Sleep for a bit before getting the next user
-            sleep_delay = random.randint(0, random.randint(6, 8)) # 180))
+            sleep_delay = random.randint(0, 10) # 180))
             time.sleep(sleep_delay)
 
 
@@ -237,7 +233,6 @@ if __name__ == "__main__":
             all_following[follower_pk]["is_follower"] = True
             all_followers[follower_pk]["am_following"] = True
             print("Following and followed by: " + all_followers[follower_pk].get("username"))
-
 
     client.add_users_to_db(all_followers.keys(), skip_saved=True, is_follower=True, am_following=False)
 
