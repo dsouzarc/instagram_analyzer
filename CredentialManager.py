@@ -1,15 +1,11 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 import base64
 import json
-import getpass 
+import getpass
 import os
 import sys
-
-"""Note: This is not a secure password manager for production purposes.
-    It sacrifices security at the expense of convenience and quicker speed.
-    I mainly use it as a fast way to access (centralized) credentials for my personal side projects
-"""
 
 
 ######################################################################################
@@ -17,188 +13,124 @@ import sys
 # A password manager completely written in Python
 #
 # For run instructions, see
-#   https://github.com/dsouzarc/dotfiles/tree/master/Python#credential-manager 
+#   https://github.com/dsouzarc/dotfiles/tree/master/Python#credential-manager
 ######################################################################################
 
+class CredentialManager(object):
 
-#Store data in hidden file in hidden folder in home directory
-directory_path = str(os.path.expanduser("~")) + "/.my_credential_manager/"
-file_path = directory_path + ".credential_files.json"
+    # Store data in hidden file in hidden folder in home directory
 
-#Create path if needed
-if not os.path.exists(directory_path):
-    print("Initialized credential manager: " + file_path)
-    os.makedirs(directory_path)
+    directory_path = str(os.path.expanduser('~')) \
+        + '/.my_credential_manager/'
+    file_path = directory_path + '.credential_files.json'
 
-#Load data from file
-if os.path.isfile(file_path):
-    try:
-        with open(file_path) as credential_file:
-            credentials = json.load(credential_file)
-    except ValueError:
-        print("Value error for loading existing credentials from file. Building new file")
-        credentials = {}
-else:
-    print("No existing credentials")
-    credentials = {}
+    def __init__(self):
+        """Constructor that just loads the prior credentials to a JSON object"""
 
+        credentials = dict()
 
-#################################
-# UTILITY & MANAGERIAL METHODS
-#################################
+        # Create path if needed
 
+        if not os.path.exists(directory_path):
+            print 'Initialized credential manager: ' + file_path
+            os.makedirs(directory_path)
 
-def save_credentials_prompt():
-    """Prompts user to enter username and password for an account and then saves it"""
-    account_name = raw_input("Enter account name: ")
-    username_raw = raw_input("Enter username for account: ")
-    password_raw = getpass.getpass("Enter password for account: ")
+        # Load data from file
 
-    username_key = account_name + "_Username"
-    password_key = account_name + "_Password"
-
-    save_credentials(username_key, username_raw, password_key)
-
-
-def get_credentials(account_name):
-    """Retrieves the (username, password) as a tuple for the given account name
-
-    Args:
-        account_name (str): Name of the service 
-
-    Returns:
-        tuple(str, str): Username and password for the service
-    """
-
-    username_key = account_name + "_Username"
-    password_key = account_name + "_Password"
-
-    username = get_value(username_key)
-    password = get_value(password_key)
-
-    return (username, password)
-
-def get_credentials_prompt():
-    """Prompts the user to enter an account name. Prints the credentials"""
-
-    account_name = raw_input("Enter account name: ")
-    username, password = get_credentials(account_name)
-
-    print(username)
-    print(password)
-
-
-#Save credentials
-def save_credentials(usernameKey, username, password, passwordKey):
-    
-    if usernameKey in credentials:
-        print("Username already exists for '" + usernameKey + "'.")
-        answer = raw_input("Override? y/n: ")
-
-        if answer == 'y':
-            credentials[usernameKey] = base64.b64encode(username)
-            credentials[passwordKey] = base64.b64encode(password)
-
-            with open(file_path, 'w') as file:
-                json.dump(credentials, file, sort_keys = True, indent = 4, ensure_ascii = False)
-                print("Credentials saved")
-                return
+        try:
+            with open(file_path) as credential_file:
+                self.credentials = json.load(credential_file)
+        except ValueError:
+            print 'Error when loading existing credentials. Building new file'
+            self.credentials = dict()
         else:
-            print("Cancelled")
-            return
-    else:
-        credentials[usernameKey] = base64.b64encode(username)
-        credentials[passwordKey] = base64.b64encode(password)
+            print 'No existing credentials'
+            self.credentials = dict()
+
+    def save_credentials(self):
+        """Convenience method to centrally handle saving the credentials"""
+
+        with open(self.file_path, 'w') as credential_file:
+            json.dump(self.credentials, credential_file,
+                      sort_keys=True, indent=4)
+
+    def encrypt_value(self, value):
+        """Convenience method to centrally handle encryption/encoding
         
-        with open(file_path, 'w') as file:
-            json.dump(credentials, file, sort_keys = True, indent = 4, ensure_ascii = False)
-            print("Credentials saved")
-            return
+        Args:
+            value (str): Value to encrypt
+            
+        Returns:
+            encoded value
+        """
 
+        return base64.b64encode(value)
 
-#Set key to value
-def save_key(key, value):
-    credentials[key] = base64.b64encode(value)
-    
-    with open(file_path, 'w') as file:
-        json.dump(credentials, file, sort_keys = True, indent = 4, ensure_ascii = False)
-        print("Key and value successfully saved")
+    def decrypt_value(self, encrypted_value):
+        """Convenience method to centrally handle decryption/decoding
 
-#Save key to value (with secure prompt)
-def save_key_prompt():
-    key = raw_input("Key: ")
-    value = raw_input("Value: ")
+        Args:
+            encrypted_value (str): Value to decrypt
+            
+        Returns:
+            decrypted value
+        """
 
-    save_key(key, value)
+        return base64.b64encode(value)
 
+    def get_value(self, key):
+        """Given the key, returns the value
 
-#Get value/credential associated with key
-def get_value(key):
+        Args:
+            key (str): Key to find
 
-    if key in credentials:
-        return base64.b64decode(credentials[key])
-    else:
-        raise KeyError("No value found for: " + key)
+        Returns:
+            (str): Decrypted value
+        """
 
-def get(key):
-    return get_value(key)
+        encrypted_key = self.encrypt_value(key)
 
-def get_value_prompt():
-    return get_value(raw_input("Enter key: "))
+        if encrypted_key not in self.credentials:
+            raise KeyError('No value found for: %s' % key)
 
-#Check to see if a value/credential exists
-def does_key_exist(key):
-    return key in credentials
+        return self.decrypt_value(self.credentials[encrypted_key])
 
-def does_key_exist_prompt():
-    return does_key_exist(raw_input("Enter key: "))
+    def get_values(self, *keys):
+        """Given the keys, returns the values
 
-#Delete a credential
-def delete_key(key):
+        Args:
+            key (list(str)): Keys to find
 
-    if key in credentials:
-        del credentials[key]
-        
-        with open(file_path, 'w') as file:
-            json.dump(credentials, file, sort_keys = True, indent = 4, ensure_ascii = False)
-            print("Value for '" + key + "' has been deleted. Credentials saved")
-            return
-        print("Error saving credentials")
-    else:
-        print("Delete failed '" + key + "' does not exist")
+        Returns:
+            (list(str)): Decrypted values
+        """
 
-def delete_key_prompt():
-    delete_key(raw_input("Enter key to delete: "))
+        values = list()
 
-#Prompts for credentials, then saves them
-def save_credentials_prompt():
-    usernameKey = raw_input("Username key: ")   
-    username = raw_input("Username: ")
-    passwordKey = raw_input("Password key: ")
-    password = getpass.getpass("Password: ")
+        for key in keys:
+            values.append(self.get_value(key))
 
-    save_credentials(usernameKey, username, password, passwordKey)
+        return values
 
-#Only prompt for credentials and then save them if this file is run from main ( 'python CredentialManager.py' )
-if __name__ == "__main__":
+    def set_value(
+        self,
+        key,
+        value,
+        save_credentials=True,
+        ):
+        """Given the key and the value, update the credentials dictionary and file with it
 
-    if len(sys.argv) == 1:
-        save_credentials_prompt()
+        Args:
+            key (str): Unencrypted key to save
+            value (str): Unencrypted value to save 
+            save_credentials (bool): Whether or not to save the dictionary to file
+        """
 
-    elif len(sys.argv) == 2:
+        encrypted_key = self.encrypt_value(key)
+        encrypted_value = self.encrypt_value(value)
 
-        if sys.argv[1] == "save_credentials":
-            save_credentials_prompt()
-        elif sys.argv[1] == "save_key":
-            save_key_prompt()
-        elif sys.argv[1] == "set_value":
-            save_key_prompt()
+        self.credentials[encrypted_key] = encrypted_value
 
-        elif sys.argv[1] == "get_credentials":
-            get_credentials_prompt()
-        elif sys.argv[1] == "get_value":
-            print(get_value_prompt())
-        elif sys.argv[1] == "does_key_exist":
-            print(does_key_exist_prompt())
-        elif sys.argv[1] == "delete_key":
-            delete_key_prompt()
+        if save_credentials:
+            self.save_credentials()
+
