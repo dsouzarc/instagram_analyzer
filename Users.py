@@ -110,7 +110,6 @@ class InstagramUser(object):
         self.last_updated = current_date
 
 
-
     def storage_dict(self):
         return vars(self)
 
