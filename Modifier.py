@@ -6,34 +6,33 @@ import subprocess
 import time
 
 from bson import json_util
+from CredentialManager import CredentialManager
 from pymongo import MongoClient
 from InstagramAPI import InstagramAPI
 from Instagram import Instagram
 from Users import InstagramUser
 
 import pymongo
-import CredentialManager
 import requests
 
 
-instagram_username = CredentialManager.get_value("InstagramUsername")
-instagram_password = CredentialManager.get_value("InstagramPassword")
+credentials = CredentialManager()
 
-mongodb_username = CredentialManager.get_value("InstagramMongoDBUsername")
-mongodb_password = CredentialManager.get_value("InstagramMongoDBPassword")
-mongodb_ip_address = CredentialManager.get_value("InstagramMongoDBIPAddress")
-mongodb_port = CredentialManager.get_value("InstagramMongoDBPort")
+insta_user, insta_pass = credentials.get_account('Instagram')
+mongo_user, mongo_pass = credentials.get_account('InstagramMongoDB')
+mongo_ip, mongo_port = credentials.get_values('InstagramMongoDBIPAddress', 'InstagramMongoDBPort')
+
 
 mongo_client_host = ("mongodb://{username}:{password}@{ip_address}:{port}/"
-                        .format(username=mongodb_username, 
-                                password=mongodb_password,
-                                ip_address=mongodb_ip_address, 
-                                port=mongodb_port))
+                        .format(username=mongo_user, 
+                                password=mongo_pass,
+                                ip_address=mongo_ip, 
+                                port=mongo_port))
 
 print(mongo_client_host)
 exit(0)
 
-client = Instagram(instagram_username, instagram_password, mongo_client_host)
+client = Instagram(insta_user, insta_pass, mongo_client_host)
 
 api = None
 database = None
