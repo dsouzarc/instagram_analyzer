@@ -7,11 +7,11 @@ import subprocess
 import time
 
 from bson import json_util
-from pymongo import MongoClient
+from CredentialManager import CredentialManager
 from InstagramAPI import InstagramAPI
+from pymongo import MongoClient
 from Users import InstagramUser
 
-import CredentialManager
 import pymongo
 import requests
 
@@ -211,19 +211,19 @@ class Instagram(object):
 if __name__ == "__main__":
     """ Main method - run from here """
 
-    instagram_username = CredentialManager.get_value("InstagramUsername")
-    instagram_password = CredentialManager.get_value("InstagramPassword")
+    credential_manager = CredentialManager()
 
-    mongodb_username = CredentialManager.get_value("InstagramMongoDBUsername")
-    mongodb_password = CredentialManager.get_value("InstagramMongoDBPassword")
-    mongodb_ip_address = CredentialManager.get_value("InstagramMongoDBIPAddress")
-    mongodb_port = CredentialManager.get_value("InstagramMongoDBPort")
+    insta_username, insta_password = credential_manager.get_account('Instagram')
+    mongodb_username, mongodb_password = credential_manager.get_account('InstagramMongoDB')
+    mongodb_ip_address, mongodb_port = credential_manager.get_values('InstagramMongoDBIPAddress', 
+            'InstagramMongoDBPort')
+
 
     mongo_client_host = ("mongodb://{username}:{password}@{ip_address}:{port}/"
                             .format(username=mongodb_username, password=mongodb_password,
                                     ip_address=mongodb_ip_address, port=mongodb_port))
 
-    client = Instagram(instagram_username, instagram_password, mongo_client_host)
+    client = Instagram(insta_username, insta_password, mongo_client_host)
 
     all_followers = client.get_followers(from_mongo=False, from_file=True)
     all_following = client.get_following(from_mongo=False, from_file=True)
