@@ -6,13 +6,13 @@ import subprocess
 import time
 
 from bson import json_util
-from CredentialManager import CredentialManager
 from pymongo import MongoClient
 from InstagramAPI import InstagramAPI
 from Instagram import Instagram
 from Users import InstagramUser
 
 import pymongo
+import CredentialManager
 import requests
 
 
