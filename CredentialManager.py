@@ -267,7 +267,7 @@ if __name__ == "__main__":
             manager.get_account_prompt()
         elif sys.argv[1] == "save_value":
             manager.save_value_prompt()
-        elif sys.argv[1] == "get_value_prompt":
+        elif sys.argv[1] == "get_value":
             manager.get_value_prompt()
         elif sys.argv[1] == "delete_account":
             manager.delete_account_prompt()
