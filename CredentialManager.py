@@ -16,6 +16,7 @@ import sys
 #   https://github.com/dsouzarc/dotfiles/tree/master/Python#credential-manager
 ######################################################################################
 
+
 class CredentialManager(object):
 
 
@@ -33,7 +34,6 @@ class CredentialManager(object):
         self.file_path = self.directory_path + '.credential_files.json'
 
         #Create path if needed
-
         if not os.path.exists(self.directory_path):
             print('Initialized credential manager: %s' % self.file_path)
             os.makedirs(self.directory_path)
@@ -155,7 +155,6 @@ class CredentialManager(object):
             self.save_credentials()
 
 
-
     def save_account(self, account_name, username, password):
         """Given the account name, username, and password, update the credentials dictionary and file with it
         
@@ -251,7 +250,6 @@ class CredentialManager(object):
         """Convenience method to delete credentials for an account"""
 
         account_name = raw_input("Enter name of account to delete: ")
-
         self.delete_account(account_name)
 
 
@@ -263,17 +261,16 @@ if __name__ == "__main__":
         manager.save_account_prompt()
 
     elif len(sys.argv) == 2:
-
-        if sys.argv[1] == "save_account_prompt":
+        if sys.argv[1] == "save_account":
             manager.save_account_prompt()
-        elif sys.argv[1] == "get_account_prompt":
+        elif sys.argv[1] == "get_account":
             manager.get_account_prompt()
-        elif sys.argv[1] == "save_value_prompt":
+        elif sys.argv[1] == "save_value":
             manager.save_value_prompt()
         elif sys.argv[1] == "get_value_prompt":
             manager.get_value_prompt()
-        elif sys.argv[1] == "delete_account_prompt":
+        elif sys.argv[1] == "delete_account":
             manager.delete_account_prompt()
-        elif sys.argv[1] == "delete_value_prompt":
+        elif sys.argv[1] == "delete_value":
             manager.delete_value_prompt()
 
