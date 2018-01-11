@@ -73,6 +73,7 @@ def get_my_post_likers(instagram_api, save_to_file=True, read_from_file=False):
     save_file_name = 'results_my_posts_likes.json'
     results = dict()
 
+
     if read_from_file:
         results = json.load(open(save_file_name, 'r'))
         return results
@@ -80,7 +81,7 @@ def get_my_post_likers(instagram_api, save_to_file=True, read_from_file=False):
 
     my_posts = instagram_api.getTotalSelfUserFeed()
 
-    for post in my_posts:
+    for post_counter, post in enumerate(my_posts):
 
         post_id = post['pk']
 
@@ -96,16 +97,36 @@ def get_my_post_likers(instagram_api, save_to_file=True, read_from_file=False):
             results[str(post_id)].append(post_liker)
 
         post_url = 'https://www.instagram.com/p/{code}'.format(code=post.get('code'))
-        print("Caption: %s\t# of likes: %s\tLink: %s" % (len(post_likers), 
+        print("Caption: %s\t# of likes: %s\nLink: %s" % (len(post_likers), 
                                                             post['caption'].get('text'), post_url))
 
-        time.sleep(random.randint(2, 10))
+        time.sleep(random.randint(3, 15))
 
 
     if save_to_file:
         with open(save_file_name, 'w') as save_file:
             json.dump(results, save_file, indent=4)
 
+
+    return results
+
+
+def get_unique_likers(posts_likers):
+    """Given a dictionary of post_ids and a list of their likers,
+        Returns a dictionary with the unique likers
+
+    Args:
+        post_likers (dict, list((dict)): Results from get_my_post_likers
+
+    Returns:
+        dict(str, dict): Dictionary with key: user_id, value: liker
+    """
+
+    results = dict()
+
+    for post_id, post_likers in posts_likers.items():
+        for post_liker in post_likers:
+            results[str(post_liker['pk'])] = post_liker
 
     return results
 
@@ -179,14 +200,15 @@ if __name__ == "__main__":
 
 
 
-    all_followers_map = get_all_followers(instagram_api, save_to_file=True, read_from_file=False)
+    all_followers_map = get_all_followers(instagram_api, save_to_file=True, read_from_file=True)
 
-    my_post_likers = get_my_post_likers(instagram_api, save_to_file=True, read_from_file=False)
-    liker_frequency = get_liker_frequencies(my_post_likers)
+    my_posts_likers = get_my_post_likers(instagram_api, save_to_file=True, read_from_file=True)
+    unique_likers = get_unique_likers(my_posts_likers)
+    liker_frequency = get_liker_frequencies(my_posts_likers)
 
 
     for liker_pk, count in liker_frequency.most_common():
-        user = my_post_likers[str(liker_pk)]
+        user = unique_likers[str(liker_pk)]
         print('%s \t\t %s \t\t %s' % (user['username'], user.get('full_name', ''), count)).expandtabs(20)
 
 
