@@ -63,14 +63,14 @@ def following_follower_diff(instagram_api):
 				print(unfollow_result)
 
 
-def get_my_post_likers(instagram_api, save_to_file=True, read_from_file):
+def get_my_post_likers(instagram_api, save_to_file=True, read_from_file=False):
     """Goes through all my posts, and for reach post, gets the list of likers
 
     Returns:
         dict(str, list(dict)): Dictionary with Key: post_id. Value list of likers
     """
 
-    save_file_name = 'results_my_post_likes.json'
+    save_file_name = 'results_my_posts_likes.json'
     results = dict()
 
     if read_from_file:
@@ -83,11 +83,6 @@ def get_my_post_likers(instagram_api, save_to_file=True, read_from_file):
     for post in my_posts:
 
         post_id = post['pk']
-
-        if 'image_versions2' in post:
-            candidates = post['image_versions2']['candidates']
-            print("Analyzing: %s\n Caption: %s\n" % (candidates[0]['url'], post['caption'].get('text', '')))
-
 
         instagram_api.getMediaLikers(post_id)
         post_likers_info = instagram_api.LastJson
@@ -115,10 +110,54 @@ def get_my_post_likers(instagram_api, save_to_file=True, read_from_file):
     return results
 
 
+def get_liker_frequencies(posts_likers):
+    """Given a dictionary of post_ids and a list of their likers,
+        Returns a Counter object with user_id and like frequency
 
-#TODO
-#liker_counter.update({liker_pk: 1})
-#all_likers_map[liker_pk] = post_liker
+    Args:
+        posts_likers (dict, list(dict)): Results from get_my_post_likers
+
+    Returns:
+        Counter: python Counter object with user_id: frequency
+    """
+
+    liker_counter = Counter()
+
+    for post_id, post_likers in posts_likers.items():
+        for post_liker in post_likers:
+            liker_pk = str(post_liker['pk'])
+            liker_counter.update({liker_pk: 1})
+
+
+    return liker_counter
+
+
+def get_all_followers(instagram_api, save_to_file=True, read_from_file=False):
+    """Convenience method to return a dict with key: username, value: user object
+
+    Returns:
+        dict(str, dict): key: username, value: user object
+    """
+
+    save_file_name = 'my_followers.json'
+
+    if save_to_file:
+        results = json.load(open(save_file_name, 'r'))
+        return results
+    
+
+    all_followers_map = dict()
+
+    all_followers_raw = instagram_api.getTotalSelfFollowers()
+    for raw_follower in all_followers_raw:
+        all_followers_map[str(raw_follower['pk'])] = raw_follower
+
+    if save_to_file:
+        with open(save_file_name, 'w') as save_file:
+            json.dump(all_followers_map, save_file, indent=4)
+
+
+    return all_followers_map
 
 
 
@@ -135,42 +174,20 @@ if __name__ == "__main__":
 
     #user_info = instagram_api.getUsernameInfo(1458052235)
     #user_info = instagram_api.getUserTags(1458052235)
-    #user_info = instagram_api.getGeoMedia(1458052235) #None
     #user_info = instagram_api.getUserFeed(1458052235) #GOOD
     #geo_info = instagram_api.getLikedMedia() #Just things that I've liked
 
 
-    #instagram_api.mediaInfo('1674292635785098154_1458052235')
-    #instagram_api.getMediaLikers('1674292635785098154_1458052235')
 
-
-    all_followers_map = dict()
-    all_likers_map = dict()
-    liker_counter = Counter()
-
-    all_followers_raw = instagram_api.getTotalSelfFollowers()
-    for raw_follower in all_followers_raw:
-        all_followers_map[str(raw_follower['pk'])] = raw_follower
-
-    """
-    posts = instagram_api.getTotalSelfUserFeed()
-
-    """
+    all_followers_map = get_all_followers(instagram_api, save_to_file=True, read_from_file=False)
 
     my_post_likers = get_my_post_likers(instagram_api, save_to_file=True, read_from_file=False)
+    liker_frequency = get_liker_frequencies(my_post_likers)
 
-    all_posts = json.load(open('results_my_likes.json', 'r'))
 
-    for post_id, post_likers in all_posts.items():
-        for post_liker in post_likers:
-            liker_pk = str(post_liker['pk'])
-            liker_counter.update({liker_pk: 1})
-            all_likers_map[liker_pk] = post_liker
-
-    for liker_pk, count in liker_counter.most_common():
-
-        user = all_likers_map[liker_pk]
-        #print('%s \t\t %s \t\t %s' % (user['username'], user.get('full_name', ''), count)).expandtabs(20)
+    for liker_pk, count in liker_frequency.most_common():
+        user = my_post_likers[str(liker_pk)]
+        print('%s \t\t %s \t\t %s' % (user['username'], user.get('full_name', ''), count)).expandtabs(20)
 
 
     for user_pk, user in all_followers_map.items():
