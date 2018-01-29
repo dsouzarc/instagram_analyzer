@@ -25,7 +25,7 @@ from requests_toolbelt import MultipartEncoder
 ####################################################################
 #                   Modified by Ryan D'souza
 #       	Handles interactions with Instagram's API
-#			https://github.com/LevPasha/Instagram-API-python
+#       	https://github.com/LevPasha/Instagram-API-python
 ####################################################################
 
 
@@ -34,15 +34,14 @@ class InstagramAPI(object):
 
     ####################################################################
     """         Class that acts as an Instagram API Client
-                    See Instagram.py for running example			 """
+                    See Instagram.py for running example             """
     ####################################################################
     
-
-	#Preferences file
+    #Preferences file
     CONSTANTS_FILE_NAME = "Constants.json"
     REQUESTS_FILE_NAME = "Requests.pkl"
     
-	#Other constants
+    #Other constants
     API_URL = 'https://i.instagram.com/api/v1/'
     USER_AGENT = None
     IG_SIG_KEY = None
