@@ -11,19 +11,19 @@ import json
 
 
 def get_datetime():
-    """ Convenience method for current date as a string
+    """Convenience method for current date as a string
 
-        :return: string for today in YYYY-MM-dd
+    Returns:
+        (str): string for today in YYYY-MM-dd
     """
     return datetime.now().strftime('%Y-%m-%d')
 
 
 
 class InstagramUser(object):
-    """
-        Represents an InstagramUser stored in MongoDB
+    """Represents an InstagramUser stored in MongoDB
         Object-Oriented design for convenience and encapsulation when manipulating
-            more complicated data which might be missing
+         more complicated data which might be missing
     """
 
     full_name = None
@@ -45,14 +45,15 @@ class InstagramUser(object):
 
     def __init__(self, raw_user_info, last_updated=None, updates=None, 
                     states=None, is_follower=False, am_following=False):
-        """
-            Constructor
-                :param raw_user_info: dict JSON response from Instagram getUsernameInfo API call
-                :param last_updated: string YYY-MM-dd for when this user was last updated
-                :param updates: dict{string date: list(operation)} for when/what we did
-                :param states: dict{string date: json difference} 
-                :param is_follower: bool indicating whether or not they follow us
-                :param am_following: bool indicating whether or not we follow them
+        """Constructor
+
+        Args:
+            raw_user_info (dict): dict JSON response from Instagram getUsernameInfo API call
+            last_updated (str): string YYY-MM-dd for when this user was last updated
+            updates (dict): dict{string date: list(operation)} for when/what we did
+            states (dict): dict{string date: json difference} 
+            is_follower (bool): bool indicating whether or not they follow us
+            am_following (bool): bool indicating whether or not we follow them
         """
 
         self.full_name = raw_user_info["full_name"]
@@ -86,10 +87,10 @@ class InstagramUser(object):
 
 
     def add_update(self, update, current_date=get_datetime()):
-        """
-            Adds an update to this user with the current date as a key
+        """Adds an update to this user with the current date as a key
 
-                :param update: string description of the update
+        Args:
+            update (str): string description of the update
         """
         
         if current_date not in self.updates:
@@ -100,10 +101,10 @@ class InstagramUser(object):
 
 
     def add_state(self, state, current_date=get_datetime()):
-        """
-            Adds the old state of this user with the current date as a key
+        """Adds the old state of this user with the current date as a key
 
-                :param state: dict of user
+        Args:
+            state (dict): Dictionary of the user
         """
 
         self.states[current_date] = state
@@ -111,5 +112,10 @@ class InstagramUser(object):
 
 
     def storage_dict(self):
+        """Convenience method to return this object as a storable dictionary
+
+        Returns:
+            (dict): Dictionary representation of this object and its values
+        """
         return vars(self)
 
