@@ -33,15 +33,16 @@ class Instagram(InstagramAPI):
     _users_collection = None
 
 
-    def __init__(self, instagram_username, instagram_password, mongoclient_host):
-        """ Constructor
-        
-            :param instagram_username: string version of username i.e.: 'dsouzarc'
-            :param instagram_password: string version of password
-            :param mongoclient_host: string host for MongoDB instance i.e.: "localhost://27017"
+    def __init__(self, insta_username, insta_password, mongoclient_host):
+        """Constructor
+
+        Args:
+            insta_username (str): string version of username i.e.: 'dsouzarc'
+            insta_password (str): string version of password
+            mongoclient_host (str): string host for MongoDB instance i.e.: "localhost://27017"
         """
 
-        InstagramAPI.__init__(self, username=instagram_username, password=instagram_password)
+        InstagramAPI.__init__(self, username=insta_username, password=insta_password)
 
         database_client = MongoClient(mongoclient_host)
         self._database = database_client["Instagram"]
@@ -51,7 +52,7 @@ class Instagram(InstagramAPI):
 
 
     def get_messages(self):
-        """ Prints a list of messages in the inbox """
+        """Prints a list of messages in the inbox"""
 
         request_response = self.getv2Inbox()
         actual_responses = self.LastJson
@@ -85,10 +86,12 @@ class Instagram(InstagramAPI):
     def get_following(self, from_mongo=True, from_file=False):
         """Gets a list of all the users we are following on Instagram.
 
-            :param from_mongo: bool for whether we should get saved Mongo data or live data
-            :param from_file: bool for whether we should get the data from a saved file
+        Args:
+            from_mongo (bool): bool for whether we should get saved Mongo data or live data
+            from_file (bool): bool for whether we should get the data from a saved file
 
-            :return dict(pk, dict): dict of who we are following. key: user PK, value: user
+        Returns:
+            dict(pk, dict): dict of who we are following. key: user PK, value: user
         """
 
         all_following = dict()
@@ -118,10 +121,12 @@ class Instagram(InstagramAPI):
     def get_followers(self, from_mongo=True, from_file=False):
         """Gets a list of all the users that follow us on Instagram
 
-            :param from_mongo: bool for whether we should get saved Mongo data or live data
-            :param from_file: bool for whether we should get the data from a saved file
+        Args:
+            from_mongo (bool): bool for whether we should get saved Mongo data or live data
+            from_file (bool): bool for whether we should get the data from a saved file
 
-            :return dict(pk, dict): dict of who follows us. key: user PK, value: user
+        Returns:
+            dict(pk, dict): dict of who follows us. key: user PK, value: user
         """
 
         all_followers = dict()
@@ -152,10 +157,11 @@ class Instagram(InstagramAPI):
         """Given a list of users, for each user, gets their information (1 API call)
             and saves it to MongoDB
 
-            :param user_pks: list(int) of users' PKs
-            :param skip_saved: bool indicating if we should replace the data if it is in Mongo
-            :param is_follower: bool indicating if the user follows us
-            :param am_following: bool indicating if we follow the user
+        Args:
+            user_pks (list(int)): list(int) of users' PKs
+            skip_saved (bool): bool indicating if we should replace the data if it is in Mongo
+            is_follower (bool): bool indicating if the user follows us
+            am_following (bool): bool indicating if we follow the user
         """
 
         skip_user_pks = set()
@@ -185,7 +191,9 @@ class Instagram(InstagramAPI):
 
             #No error - let's insert the user into Mongo
             else:
-                user = InstagramUser(raw_user, is_follower=is_follower, am_following=am_following)
+                user = InstagramUser(raw_user, 
+                                     is_follower=is_follower, 
+                                     am_following=am_following)
                 user.add_update("inserted")
 
                 try:
