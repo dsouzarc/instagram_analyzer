@@ -688,6 +688,31 @@ class InstagramAPI(object):
         # TODO Instagram.php 1620-1645
         return False
 
+
+    def getTotalSelfUserFeed(self, minTimestamp = None):
+        return self.getTotalUserFeed(self.username_id, minTimestamp) 
+    
+
+    def getTotalSelfFollowers(self):
+        return self.getTotalFollowers(self.username_id)
+    
+
+    def getTotalSelfFollowings(self):
+        return self.getTotalFollowings(self.username_id)
+        
+
+    def getTotalLikedMedia(self,scan_rate = 1):
+        next_id = ''
+        liked_items = []
+        for x in range(0,scan_rate):
+            temp = self.getLikedMedia(next_id)
+            temp = self.LastJson
+            next_id = temp["next_max_id"]
+            for item in temp["items"]:
+                liked_items.append(item)
+        return liked_items
+
+
     def SendRequest(self, endpoint, post = None, login = False):
         if (not self.is_logged_in and not login):
             raise Exception("Not logged in!\n")
@@ -800,80 +825,36 @@ class InstagramAPI(object):
         counter = 0
 
         while 1 and counter < max_pages:
-            self.getUserFeed(username_id, next_max_id, min_timestamp)
-            temp = self.LastJson
 
-            for item in temp.get("items", list()):
-                total_user_feed.append(item)
+            try:
+                self.getUserFeed(username_id, next_max_id, min_timestamp)
+                temp = self.LastJson
 
-            if not temp["more_available"]:
-                counter = max_pages
+            except Exception as e:
+                print("ERROR GETTING USER FEED: %s" % e)
+                time.sleep(get_error_sleep_time())
+
             else:
-                counter += 1
-                next_max_id = temp["next_max_id"]
+                for item in temp.get("items", list()):
+                    total_user_feed.append(item)
+
+                if not temp["more_available"]:
+                    counter = max_pages
+                else:
+                    counter += 1
+                    next_max_id = temp["next_max_id"]
 
 
         return total_user_feed
 
 
+    @staticmethod
+    def get_error_sleep_time():
+        """Convenience method to return a random time to sleep for when we encounter an error
 
-    """
-    def getTotalUserFeed(self, usernameId, mongo_table, minTimestamp=None, 
-                         sleep=False, sleep_time=0.0, max_value=sys.maxint):
-        user_feed = []
-        next_max_id = ''
-        counter = 0
+        Returns:
+            (int): Randomly generated integer for how long to sleep for
+        """
 
-        results_name = 'tfm_results.json'
-        results = []
-
-        while 1 or counter < max_value:
-
-            try:
-                self.getUserFeed(usernameId, next_max_id, minTimestamp)
-                temp = self.LastJson
-                for item in temp["items"]:
-                    user_feed.append(item)
-                    mongo_table.insert_one(item)
-
-                    results.append(item)
-                if temp["more_available"] == False:
-                    return user_feed
-                next_max_id = temp["next_max_id"]
-
-                counter += 1
-                if counter % 4 == 0:
-                    time.sleep(random.randint(random.randint(20, 110), random.randint(111, 180)))
-                else:
-                    time.sleep(random.randint(random.randint(10, 30), random.randint(31, 45)))
-            
-            except Exception as e:
-                print("ERROR HERE: %s" % e)
-                print(self.LastJson)
-                time.sleep(random.randint(random.randint(90, 120), random.randint(150, 240)))
-    """
-
-
-    def getTotalSelfUserFeed(self, minTimestamp = None):
-        return self.getTotalUserFeed(self.username_id, minTimestamp) 
-    
-
-    def getTotalSelfFollowers(self):
-        return self.getTotalFollowers(self.username_id)
-    
-
-    def getTotalSelfFollowings(self):
-        return self.getTotalFollowings(self.username_id)
-        
-
-    def getTotalLikedMedia(self,scan_rate = 1):
-        next_id = ''
-        liked_items = []
-        for x in range(0,scan_rate):
-            temp = self.getLikedMedia(next_id)
-            temp = self.LastJson
-            next_id = temp["next_max_id"]
-            for item in temp["items"]:
-                liked_items.append(item)
-        return liked_items
+        return random.randint(random.randint(90, 120), random.randint(150, 240))
 
