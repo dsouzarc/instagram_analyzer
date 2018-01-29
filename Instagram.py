@@ -22,6 +22,8 @@ import requests
 ####################################################################
 
 
+
+
 class Instagram(InstagramAPI):
     """Main class that handles all interactions"""
 
@@ -207,23 +209,37 @@ class Instagram(InstagramAPI):
             time.sleep(sleep_delay)
 
 
+    @staticmethod
+    def default_client():
+        """Convenience method to return an Instagram object with the default credentials/set-up
+
+        Returns:
+            (:obj: `Instagram.Instagram`): Initialized version of our Instagram client
+        """
+
+        credential_manager = CredentialManager()
+
+        insta_username, insta_password = credential_manager.get_account('Instagram')
+
+        mongodb_username, mongodb_password = credential_manager.get_account('InstagramMongoDB')
+        mongodb_ip_address, mongodb_port = (credential_manager.
+                                            get_values('InstagramMongoDBIPAddress', 
+                                                        'InstagramMongoDBPort'))
+
+
+        mongo_client_host = ("mongodb://{username}:{password}@{ip_address}:{port}/"
+                                .format(username=mongodb_username, password=mongodb_password,
+                                        ip_address=mongodb_ip_address, port=mongodb_port))
+
+        client = Instagram(insta_username, insta_password, mongo_client_host)
+
+        return client
+
+
 if __name__ == "__main__":
     """ Main method - run from here """
 
-    credential_manager = CredentialManager()
-
-    insta_username, insta_password = credential_manager.get_account('Instagram')
-    mongodb_username, mongodb_password = credential_manager.get_account('InstagramMongoDB')
-    mongodb_ip_address, mongodb_port = credential_manager.get_values('InstagramMongoDBIPAddress', 
-            'InstagramMongoDBPort')
-
-
-    mongo_client_host = ("mongodb://{username}:{password}@{ip_address}:{port}/"
-                            .format(username=mongodb_username, password=mongodb_password,
-                                    ip_address=mongodb_ip_address, port=mongodb_port))
-
-    client = Instagram(insta_username, insta_password, mongo_client_host)
-
+    client = Instagram.default_client()
 
     #client.get_messages()
     #exit(0)
