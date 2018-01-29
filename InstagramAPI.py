@@ -755,6 +755,69 @@ class InstagramAPI(object):
             next_max_id = temp["next_max_id"] 
 
 
+    def user_feed_generator(self, username_id, max_pages=sys.maxint, min_timestamp=None):
+        """Generator function to return a user's posts. Yields a LIST of posts
+
+        Args:
+            username_id (int): The user's ID
+            max_pages (int): Maximum number of pages to get data from
+            min_timestamp (int): Timestamp for earliest post to get
+
+        Returns:
+            (list(dict)): A list of posts (each post is a dictionary) a user has made
+        """
+
+        next_max_id = ''
+        counter = 0
+
+        while 1 and counter < max_pages:
+            self.getUserFeed(username_id, next_max_id, min_timestamp)
+            temp = self.LastJson
+
+            if not temp["more_available"]:
+                counter = max_pages
+            else:
+                counter += 1
+                next_max_id = temp["next_max_id"]
+
+            yield temp.get("items", list())
+
+
+    def getTotalUserFeed(self, username_id, max_pages=sys.maxint, min_timestamp=None):
+        """Aggregate's a user's posts and returns it
+
+        Args:
+            username_id (int): The user's ID
+            max_pages (int): Maximum number of pages to get data from
+            min_timestamp (int) Timestamp for earliest post to get
+
+        Returns:
+            (list(dict)): A list of posts (each post is a dictionary) a user has made
+        """
+
+        total_user_feed = list()
+        next_max_id = ''
+        counter = 0
+
+        while 1 and counter < max_pages:
+            self.getUserFeed(username_id, next_max_id, min_timestamp)
+            temp = self.LastJson
+
+            for item in temp.get("items", list()):
+                total_user_feed.append(item)
+
+            if not temp["more_available"]:
+                counter = max_pages
+            else:
+                counter += 1
+                next_max_id = temp["next_max_id"]
+
+
+        return total_user_feed
+
+
+
+    """
     def getTotalUserFeed(self, usernameId, mongo_table, minTimestamp=None, 
                          sleep=False, sleep_time=0.0, max_value=sys.maxint):
         user_feed = []
@@ -788,6 +851,7 @@ class InstagramAPI(object):
                 print("ERROR HERE: %s" % e)
                 print(self.LastJson)
                 time.sleep(random.randint(random.randint(90, 120), random.randint(150, 240)))
+    """
 
 
     def getTotalSelfUserFeed(self, minTimestamp = None):
