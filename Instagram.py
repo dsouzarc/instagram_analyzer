@@ -22,12 +22,11 @@ import requests
 ####################################################################
 
 
-class Instagram(object):
+class Instagram(InstagramAPI):
     """Main class that handles all interactions"""
 
     IS_DEVELOPMENT = True
 
-    _api = None
     _database = None
     _users_collection = None
 
@@ -40,7 +39,7 @@ class Instagram(object):
             :param mongoclient_host: string host for MongoDB instance i.e.: "localhost://27017"
         """
 
-        self._api = InstagramAPI(instagram_username, instagram_password)
+        InstagramAPI.__init__(self, username=instagram_username, password=instagram_password)
 
         database_client = MongoClient(mongoclient_host)
         self._database = database_client["Instagram"]
@@ -52,8 +51,8 @@ class Instagram(object):
     def get_messages(self):
         """ Prints a list of messages in the inbox """
 
-        request_response = self._api.getv2Inbox()
-        actual_responses = self._api.LastJson
+        request_response = self.getv2Inbox()
+        actual_responses = self.LastJson
 
         inbox = actual_responses["inbox"]
         threads = inbox["threads"]
@@ -99,7 +98,7 @@ class Instagram(object):
 
         #Get the live data
         elif not from_mongo and not from_file:
-            following = self._api.getTotalSelfFollowers()
+            following = self.getTotalSelfFollowers()
             json.dump(following, open('all_following.json', 'w'), indent=4)
 
         #Get the data from a saved file
@@ -132,7 +131,7 @@ class Instagram(object):
 
         #Get the live data
         elif not from_mongo and not from_file:
-            followers = self._api.getTotalSelfFollowers()
+            followers = self.getTotalSelfFollowers()
             json.dump(followers, open('all_followers.json', 'w'), indent=4)
 
         #Get the data from a saved file
@@ -173,8 +172,8 @@ class Instagram(object):
 
             #New user, get their information
             try:
-                raw_user_result = self._api.getUsernameInfo(user_pk)
-                raw_user = self._api.LastJson["user"]
+                raw_user_result = self.getUsernameInfo(user_pk)
+                raw_user = self.LastJson["user"]
 
             #Error getting user from Instagram API - sleep then try again
             except requests.exceptions.RequestException as e:
@@ -225,6 +224,11 @@ if __name__ == "__main__":
 
     client = Instagram(insta_username, insta_password, mongo_client_host)
 
+
+    #client.get_messages()
+    #exit(0)
+
+
     all_followers = client.get_followers(from_mongo=False, from_file=True)
     all_following = client.get_following(from_mongo=False, from_file=True)
 
@@ -236,7 +240,6 @@ if __name__ == "__main__":
 
     client.add_users_to_db(all_followers.keys(), skip_saved=True, is_follower=True, am_following=False)
 
-    #client.get_messages()
     exit(0)
 
 
