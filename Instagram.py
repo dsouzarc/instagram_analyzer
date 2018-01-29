@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 """Instagram.py: Handles interacting with Instagram API, storing data, and analyzing data"""
 
+import inspect
 import json
+import os
 import random
 import subprocess
+import sys
 import time
 
 from bson import json_util
@@ -33,16 +36,19 @@ class Instagram(InstagramAPI):
     _users_collection = None
 
 
-    def __init__(self, insta_username, insta_password, mongoclient_host):
+    def __init__(self, insta_username, insta_password, 
+                 mongoclient_host, constants_file_name=None):
         """Constructor
 
         Args:
             insta_username (str): string version of username i.e.: 'dsouzarc'
             insta_password (str): string version of password
             mongoclient_host (str): string host for MongoDB instance i.e.: "localhost://27017"
+            constants_file_name (str): string path to where the Constants file is
         """
 
-        InstagramAPI.__init__(self, username=insta_username, password=insta_password)
+        InstagramAPI.__init__(self, username=insta_username, password=insta_password, 
+                              constants_file_name=constants_file_name)
 
         database_client = MongoClient(mongoclient_host)
         self._database = database_client["Instagram"]
@@ -227,6 +233,10 @@ class Instagram(InstagramAPI):
 
         credential_manager = CredentialManager()
 
+        current_directory = os.path.abspath(inspect.getfile(inspect.currentframe()))
+        parent_directory = os.path.dirname(current_directory)
+        constants_file_name = parent_directory + '/' + InstagramAPI.CONSTANTS_FILE_NAME
+
         insta_username, insta_password = credential_manager.get_account('Instagram')
 
         mongodb_username, mongodb_password = credential_manager.get_account('InstagramMongoDB')
@@ -239,7 +249,8 @@ class Instagram(InstagramAPI):
                                 .format(username=mongodb_username, password=mongodb_password,
                                         ip_address=mongodb_ip_address, port=mongodb_port))
 
-        client = Instagram(insta_username, insta_password, mongo_client_host)
+        client = Instagram(insta_username, insta_password,
+                           mongo_client_host, constants_file_name)
 
         return client
 
