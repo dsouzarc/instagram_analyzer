@@ -66,7 +66,7 @@ class InstagramAPI(object):
 
 
     def __init__(self, username, password, debug = False):
-        """ Constructor """
+        """Constructor """
 
         constants_file = open(self.CONSTANTS_FILE_NAME)
         constants = json.load(constants_file)
@@ -755,17 +755,39 @@ class InstagramAPI(object):
             next_max_id = temp["next_max_id"] 
 
 
-    def getTotalUserFeed(self, usernameId, minTimestamp = None):
+    def getTotalUserFeed(self, usernameId, mongo_table, minTimestamp=None, 
+                         sleep=False, sleep_time=0.0, max_value=sys.maxint):
         user_feed = []
         next_max_id = ''
-        while 1:
-            self.getUserFeed(usernameId, next_max_id, minTimestamp)
-            temp = self.LastJson
-            for item in temp["items"]:
-                user_feed.append(item)
-            if temp["more_available"] == False:
-                return user_feed
-            next_max_id = temp["next_max_id"]
+        counter = 0
+
+        results_name = 'tfm_results.json'
+        results = []
+
+        while 1 or counter < max_value:
+
+            try:
+                self.getUserFeed(usernameId, next_max_id, minTimestamp)
+                temp = self.LastJson
+                for item in temp["items"]:
+                    user_feed.append(item)
+                    mongo_table.insert_one(item)
+
+                    results.append(item)
+                if temp["more_available"] == False:
+                    return user_feed
+                next_max_id = temp["next_max_id"]
+
+                counter += 1
+                if counter % 4 == 0:
+                    time.sleep(random.randint(random.randint(20, 110), random.randint(111, 180)))
+                else:
+                    time.sleep(random.randint(random.randint(10, 30), random.randint(31, 45)))
+            
+            except Exception as e:
+                print("ERROR HERE: %s" % e)
+                print(self.LastJson)
+                time.sleep(random.randint(random.randint(90, 120), random.randint(150, 240)))
 
 
     def getTotalSelfUserFeed(self, minTimestamp = None):
