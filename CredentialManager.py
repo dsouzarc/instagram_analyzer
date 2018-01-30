@@ -10,7 +10,8 @@ import sys
 
 ######################################################################################
 # Written by Ryan D'souza in 2015
-# A password manager completely written in Python
+# A password manager written in Python with only native dependencies
+# Note: this sacrifies most security at the expense of convenience and speed
 #
 # For run instructions, see
 #   https://github.com/dsouzarc/dotfiles/tree/master/Python#credential-manager
@@ -18,6 +19,7 @@ import sys
 
 
 class CredentialManager(object):
+    """Main class that manages credentials"""
 
 
     directory_path = None
@@ -29,14 +31,13 @@ class CredentialManager(object):
         """Constructor that just loads the prior credentials to a JSON object"""
 
         #Store data in hidden file in hidden folder in home directory
-        self.directory_path = str(os.path.expanduser('~')) \
-                                + '/.my_credential_manager/'
-        self.file_path = self.directory_path + '.credential_files.json'
+        self.directory_path = '{home}/.my_credential_manager/'.format(home=os.path.expanduser('~'))
+        self.file_path = '{directory}.credential_files.json'.format(directory=self.directory_path)
 
         #Create path if needed
         if not os.path.exists(self.directory_path):
-            print('Initialized credential manager: %s' % self.file_path)
             os.makedirs(self.directory_path)
+            print('Initialized credential manager: %s' % self.file_path)
 
         #Load data from file
         try:
@@ -44,7 +45,6 @@ class CredentialManager(object):
                 self.credentials = json.load(credential_file)
         except ValueError:
             print 'Error when loading existing credentials. Building new file'
-            self.credentials = dict()
 
         if self.credentials is None:
             self.credentials = dict()
@@ -54,8 +54,7 @@ class CredentialManager(object):
         """Convenience method to centrally handle saving the credentials"""
 
         with open(self.file_path, 'w') as credential_file:
-            json.dump(self.credentials, credential_file,
-                      sort_keys=True, indent=4)
+            json.dump(self.credentials, credential_file, sort_keys=True, indent=4)
 
 
     def encrypt_value(self, value):
@@ -156,7 +155,7 @@ class CredentialManager(object):
 
 
     def save_account(self, account_name, username, password):
-        """Given the account name, username, and password, update the credentials dictionary and file with it
+        """Given the account information, update the credentials dictionary and file with it
         
         Args:
             account_name (str): Name of the account
@@ -164,8 +163,8 @@ class CredentialManager(object):
             password (str): Raw password to save
         """
 
-        username_key = account_name + "_Username"
-        password_key = account_name + "_Password"
+        username_key = '{account_name}_Username'.format(account_name=account_name)
+        password_key = '{account_name}_Password'.format(account_name=account_name)
 
         self.set_value(username_key, username, save_credentials=False)
         self.set_value(password_key, password, save_credentials=False)
@@ -182,8 +181,8 @@ class CredentialManager(object):
             (list(str)): Username and password for the account
         """
 
-        username_key = account_name + "_Username"
-        password_key = account_name + "_Password"
+        username_key = '{account_name}_Username'.format(account_name=account_name)
+        password_key = '{account_name}_Password'.format(account_name=account_name)
 
         return self.get_values(username_key, password_key)
 
@@ -195,8 +194,8 @@ class CredentialManager(object):
             account_name (str): Name of the account
         """
 
-        username_key = account_name + "_Username"
-        password_key = account_name + "_Password"
+        username_key = '{account_name}_Username'.format(account_name=account_name)
+        password_key = '{account_name}_Password'.format(account_name=account_name)
 
         self.delete_value(username_key, save_credentials=False)
         self.delete_value(password_key, save_credentials=False)
