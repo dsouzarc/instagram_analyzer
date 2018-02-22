@@ -64,20 +64,21 @@ class InstagramAPI(object):
     LastJson = None
 
 
-    def __init__(self, username, password, constants_file_name=None, debug=False):
+    def __init__(self, username, password, save_file_path=None, debug=False):
         """Constructor 
         
         Args:
             username (str): Instagram username
             password (str): Instagram password
-            constants_file_name (str): Path to the Constants file for storing credentials
+            save_file_path (str): Path to where we should save credentials
             debug (bool): For printing log messages
         """
 
-        if constants_file_name is None:
-            constants_file_name = self.CONSTANTS_FILE_NAME
+        if save_file_path is not None:
+            self.CONSTANTS_FILE_NAME = save_file_path + '/' + self.CONSTANTS_FILE_NAME 
+            self.REQUESTS_FILE_NAME = save_file_path + '/' + self.REQUESTS_FILE_NAME 
 
-        constants_file = open(constants_file_name)
+        constants_file = open(self.CONSTANTS_FILE_NAME)
         constants = json.load(constants_file)
         constants_file.close()
 
