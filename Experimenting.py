@@ -15,52 +15,89 @@ import pymongo
 import requests
 
 
+def unfollow_user(instagram_api, user_pk, unlike_posts=True, min_wait=2, max_wait=10):
+    """Convenience method for unfollowing someone and unliking posts
+
+    Args:
+        instagram_api (InstagramAPI.InstagramAPI): instagram api object
+        user_pk (str): the user ID/pk
+        unlike_posts (bool): whether to unlike their posts
+    """
+
+    if not unlike_posts:
+        unfollow_result = instagram_api.unfollow(user_pk)
+        print("Unfollowed %s" % unfollow_result)
+        return
+    
+    try:
+        user_posts = instagram_api.getTotalUserFeed(user_pk)
+    except KeyError:
+        print('Cannot access posts as account could not be found')
+    else:
+        unlike_count = 0
+
+        for user_post in user_posts:
+            if user_post['has_liked']:
+                media_id = user_post['id']
+                unlike_result = instagram_api.unlike(media_id)
+                time.sleep(random.randint(min_wait, max_wait))
+
+                if not unlike_result:
+                    print("Error unliking post: %s\t %s" % (unlike_result, 
+                            json.dumps(instagram_api.LastJson, indent=4)))
+                else:
+                    unlike_count += 1
+
+        unfollow_result = instagram_api.unfollow(user_pk)
+        print("Unliked %s\tOut of %s. \tUnfollowed: %s" % (unlike_count, len(user_posts), unfollow_result))
+
+
 #Interactive way to unfollow those who don't follow back
 def following_follower_diff(instagram_api):
-	"""Convenience method for unfollowing people
+    """Interactive method for unfollowing people
 
-	Args:
-		instagram_api (InstagramAPI.InstagramAPI): instagram api object
-	"""
+    Args:
+        instagram_api (InstagramAPI.InstagramAPI): instagram api object
+    """
 
-	all_followers = instagram_api.getTotalSelfFollowers()
-	all_following = instagram_api.getTotalSelfFollowings()
+    all_followers = instagram_api.getTotalSelfFollowers()
+    all_following = instagram_api.getTotalSelfFollowings()
 
-	all_followers_dict = {}
+    all_followers_dict = {}
 
-	for follower in all_followers:
-		user_id = follower['pk']
-		all_followers_dict[user_id] = follower
+    for follower in all_followers:
+        user_id = follower['pk']
+        all_followers_dict[user_id] = follower
 
-	for following in all_following:
-		user_id = following['pk']
+    for following in all_following:
+        user_id = following['pk']
 
-		#The person does not follow us back
-		if user_id not in all_followers_dict:
+        #The person does not follow us back
+        if user_id not in all_followers_dict:
 
-			full_name = following['full_name'].encode('utf-8')
-			user_name = following['username'].encode('utf-8')
-			profile_link = "https://instagram.com/" + user_name
+            full_name = following['full_name'].encode('utf-8')
+            user_name = following['username'].encode('utf-8')
+            profile_link = "https://instagram.com/" + user_name
 
-			#Prompt for unfollowing/other actions
-			print(full_name + " not following you: \t " + profile_link)
+            #Prompt for unfollowing/other actions
+            print(full_name + " not following you: \t " + profile_link)
 
-			command = raw_input("Type 'O' to open in brower, 'U' to unfollow, "
-									"or any other key to do nothing: ")
+            command = raw_input("Type 'O' to open in brower, 'U' to unfollow, " + 
+                                "'UL' to unfollow and unlike, " + 
+                                "or any other key to do nothing: ").lower()
 
-			if command == 'O' or command == 'o':
-				subprocess.Popen(['open', profile_link])
-
-				second_command = raw_input("\nEnter 'U' to unfollow " + full_name + 
-												" or any other key to do nothing: ")
-
-				if second_command == 'U' or second_command == 'u':
-					unfollow_result = instagram_api.unfollow(user_id)
-					print(unfollow_result)
-
-			elif command == 'U' or command == 'u':
-				unfollow_result = instagram_api.unfollow(user_id)
-				print(unfollow_result)
+            if command == 'o':
+                subprocess.Popen(['open', profile_link])
+                
+                command = raw_input("\nEnter 'U' to unfollow " + full_name +
+                        " or any other key to do nothing: ").lower()
+            
+            if command == 'u':
+                unfollow_user(instagram_api, user_id, unlike_posts=False)
+            
+            elif command == 'ul':
+                unfollow_user(instagram_api, user_id, unlike_posts=True)
+                #TODO: Add some sort of Queue for this
 
 
 def get_my_post_likers(instagram_api, save_to_file=True, read_from_file=False):
@@ -185,13 +222,15 @@ def get_all_followers(instagram_api, save_to_file=True, read_from_file=False):
 if __name__ == "__main__":
     """Main method - run from here"""
 
+#TODO: Use .map instead of for for
+
     credential_manager = CredentialManager()
     insta_username, insta_password = credential_manager.get_account('Instagram')
 
     instagram_api = InstagramAPI(insta_username, insta_password)
 
-    #following_follower_diff(instagram_api)
-    #exit(0)
+    following_follower_diff(instagram_api)
+    exit(0)
 
     #user_info = instagram_api.getUsernameInfo(1458052235)
     #user_info = instagram_api.getUserTags(1458052235)
@@ -218,33 +257,8 @@ if __name__ == "__main__":
 
             print('%s \t\t %s' % (user['username'], user.get('full_name', ''))).expandtabs(20)
             command = raw_input("Would you like to unfollow and unlike? Enter 'u': ").lower()
-
             if command == 'u':
-                try:
-                    user_posts = instagram_api.getTotalUserFeed(user_pk)
-                except KeyError:
-                    print('Cannot access posts as account could not be found')
-                else:
-                    unlike_count = 0
-
-                    for user_post in user_posts:
-                        if user_post['has_liked']:
-                            media_id = user_post['id']
-                            unlike_result = instagram_api.unlike(media_id)
-                            time.sleep(random.randint(2, 10))
-
-                            if not unlike_result:
-                                print("Error unliking post: %s\t %s" % (unlike_result, 
-                                        json.dumps(instagram_api.LastJson, indent=4)))
-                            else:
-                                unlike_count += 1
-
-                    unfollow_result = instagram_api.unfollow(user_pk)
-
-                    print("Unliked %s\tOut of %s. \tUnfollowed: %s" % (unlike_count, len(user_posts), unfollow_result))
-
-
-            print("\n")
+                unfollow_user(instagram_api, user_pk, unlike_posts=True)
 
 
 
@@ -299,6 +313,7 @@ if __name__ == "__main__":
     print(json.dumps(instagram_api.LastJson, indent=4))
     print(json.dumps(results, indent=4))
     """
+
 
 
 
