@@ -818,6 +818,17 @@ class InstagramAPI(object):
             yield temp.get("items", list())
 
 
+    @staticmethod
+    def get_error_sleep_time():
+        """Convenience method to return a random time to sleep for when we encounter an error
+
+        Returns:
+            (int): Randomly generated integer for how long to sleep for
+        """
+
+        return random.randint(random.randint(90, 120), random.randint(150, 240))
+
+
     def getTotalUserFeed(self, username_id, max_pages=sys.maxint, min_timestamp=None):
         """Aggregate's a user's posts and returns it
 
@@ -857,14 +868,4 @@ class InstagramAPI(object):
 
         return total_user_feed
 
-
-    @staticmethod
-    def get_error_sleep_time():
-        """Convenience method to return a random time to sleep for when we encounter an error
-
-        Returns:
-            (int): Randomly generated integer for how long to sleep for
-        """
-
-        return random.randint(random.randint(90, 120), random.randint(150, 240))
 

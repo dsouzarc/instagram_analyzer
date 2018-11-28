@@ -21,9 +21,8 @@ import requests
 
 ####################################################################
 #                   Written by Ryan D'souza
-#       	Main class for analyzing Instagram Data
+#       	Main class for interacting with Instagram
 ####################################################################
-
 
 
 
