@@ -19,7 +19,6 @@ def get_datetime():
     return datetime.now().strftime('%Y-%m-%d')
 
 
-
 class InstagramUser(object):
     """Represents an InstagramUser stored in MongoDB
         Object-Oriented design for convenience and encapsulation when manipulating
@@ -46,7 +45,6 @@ class InstagramUser(object):
     def __init__(self, raw_user_info, last_updated=None, updates=None, 
                     states=None, is_follower=False, am_following=False):
         """Constructor
-
         Args:
             raw_user_info (dict): dict JSON response from Instagram getUsernameInfo API call
             last_updated (str): string YYY-MM-dd for when this user was last updated
@@ -78,12 +76,12 @@ class InstagramUser(object):
         if updates is None:
             self.updates = raw_user_info.get("updates", dict())
         else:
-            self.updates = dict()
+            self.updates = {}
 
         if states is None:
             self.states = raw_user_info.get("states", dict())
         else:
-            self.states = dict()
+            self.states = {}
 
 
     def add_update(self, update, current_date=get_datetime()):
