@@ -19,7 +19,6 @@ def get_datetime():
     return datetime.now().strftime('%Y-%m-%d')
 
 
-
 class InstagramUser(object):
     """Represents an InstagramUser stored in MongoDB
         Object-Oriented design for convenience and encapsulation when manipulating
